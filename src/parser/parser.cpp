@@ -5,21 +5,49 @@
 // idea: functions dont have return, return last statement evaled.
 
 void PARSER::parse_expression(){
+    
     this->parse_term(); // first term
-    while(this->idx < this->tokens.size() && this->tokens[this->idx].type == TOKEN_TYPE::OPERATOR && (this->tokens[this->idx].value == "+" || this->tokens[this->idx].value == "-")){
-        std::string op = tokens[idx].value;
+    while(this->idx < this->tokens.size() &&
+          ((this->tokens[this->idx].type == TOKEN_TYPE::OPERATOR &&
+            (this->tokens[this->idx].value == "+" || this->tokens[this->idx].value == "-")) ||
+           (this->tokens[this->idx].type == TOKEN_TYPE::KEYWORD &&
+            this->tokens[this->idx].value == "concat"))) {
+
+        std::string op = this->tokens[this->idx].value;
         this->advance();
+
         this->parse_term();
-        this->bytecode += "OP " + op + "\n"; // emit operator bytecode
+
+        if(op == "concat") { // you can only concat a string and another string
+            if(this->bytecode.empty()){
+                throw_error("Bytecode empty when trying to concat");
+            }
+            std::cout<<this->tokens[this->idx-3].value<<" "<<this->tokens[this->idx-1].value<<"\n";
+            if(this->tokens[this->idx-3].type!= TOKEN_TYPE::STRING || this->tokens[this->idx-1].type!= TOKEN_TYPE::STRING){
+                throw_error("Concat operator requires 2 string operands");
+            }
+            std::string string1_concant = this->tokens[this->idx-3].value;
+            std::string string2_concant = this->tokens[this->idx-1].value;
+
+            std::string concatenated = string1_concant + string2_concant;
+
+            if(this->string_hasher.string_to_hash.find(concatenated) == this->string_hasher.string_to_hash.end()){
+                uint16_t str_hash = this->string_hasher.string_to_hash.size();
+                this->string_hasher.string_to_hash[concatenated] = str_hash;
+                this->bytecode+="LOADSTRING "+std::to_string(str_hash)+"\n";
+            }else{
+                uint16_t str_hash = this->string_hasher.string_to_hash[concatenated];
+                this->bytecode+="LOADSTRING "+std::to_string(str_hash)+"\n";
+            }
+            
+        } else {
+            this->bytecode += "OP " + op + "\n"; // normal arithmetic
+        }
     }
 }
 
 void PARSER::parse_unary(){
-    if(this->idx < this->tokens.size()
-       && this->tokens[this->idx].type == TOKEN_TYPE::OPERATOR
-       && (this->tokens[this->idx].value == "+"
-           || this->tokens[this->idx].value == "-"
-           || this->tokens[this->idx].value == "!")){
+    if(this->idx < this->tokens.size() && this->tokens[this->idx].type == TOKEN_TYPE::OPERATOR && (this->tokens[this->idx].value == "+" || this->tokens[this->idx].value == "-" || this->tokens[this->idx].value == "!")){
 
         std::string op = this->tokens[this->idx].value;
         this->advance();
@@ -40,7 +68,6 @@ void PARSER::parse_unary(){
     }
 }
 
-
 void PARSER::parse_term(){
     this->parse_unary();
     while(this->idx < this->tokens.size()
@@ -55,7 +82,7 @@ void PARSER::parse_term(){
 
 void PARSER::parse_string(){
     if(this->string_hasher.string_to_hash.find(this->tokens[this->idx].value) == this->string_hasher.string_to_hash.end()){
-        uint16_t str_hash = this->string_hasher.hashed_strings.size();
+        uint16_t str_hash = this->string_hasher.string_to_hash.size();
         this->string_hasher.string_to_hash[this->tokens[this->idx].value] = str_hash;
         this->bytecode+="LOADSTRING "+std::to_string(str_hash)+"\n";
     }else{
