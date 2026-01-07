@@ -29,6 +29,9 @@ enum class BTOKEN_TYPE: uint8_t {
     NOT,
     LIST,
     LOADSTRING,
+    GOTO,
+    GOTO_IF_FALSE,
+    LABEL,
 };
 
 struct TOKEN{
@@ -55,9 +58,9 @@ struct BTOKEN {
 
 
 const std::string skippables = " \n\t\r";
-const std::vector<std::string>keywords = {"if","while","impl","var","end","else","program","do","list","concat"};
-const std::vector<std::string>bytecode_keywords = {"PUSH","LOAD","STORE","OP","NEG","NOT","LIST","LOADSTRING"};
-const std::vector<std::string>expects_number_bytecode_keywords = {"PUSH","LOAD","STORE","LIST","LOADSTRING"};
+const std::vector<std::string>keywords = {"if","else","while","impl","var","end","else","program","do","list","concat"};
+const std::vector<std::string>bytecode_keywords = {"PUSH","LOAD","STORE","OP","NEG","NOT","LIST","LOADSTRING","GOTO","GOTO_IF_FALSE","LABEL"};
+const std::vector<std::string>expects_number_bytecode_keywords = {"PUSH","LOAD","STORE","LIST","LOADSTRING","GOTO","GOTO_IF_FALSE","LABEL"};
 const std::vector<std::string>expects_char_bytecode_keywords = {"OP"};
 
 struct LEXER{
@@ -123,7 +126,14 @@ struct LEXER{
                 return BTOKEN_TYPE::LIST;
             }else if(type == "LOADSTRING"){
                 return BTOKEN_TYPE::LOADSTRING;
-            }else{
+            }else if(type == "GOTO"){
+                return BTOKEN_TYPE::GOTO;
+            }else if(type == "GOTO_IF_FALSE"){
+                return BTOKEN_TYPE::GOTO_IF_FALSE;
+            }else if(type == "LABEL"){
+                return BTOKEN_TYPE::LABEL;
+            }
+            else{
                 throw std::runtime_error("Unknown bytecode token type: " + type);
             }
         }
@@ -146,6 +156,13 @@ struct LEXER{
                     return "LIST";
                 case BTOKEN_TYPE::LOADSTRING:
                     return "LOADSTRING";
+                case BTOKEN_TYPE::GOTO:
+                    return "GOTO";
+                case BTOKEN_TYPE::GOTO_IF_FALSE:
+                    return "GOTO_IF_FALSE";
+                case BTOKEN_TYPE::LABEL:
+                    return "LABEL";
+                    
                 default:
                     return "UNKNOWN";
             }
