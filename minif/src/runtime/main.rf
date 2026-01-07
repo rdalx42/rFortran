@@ -1,0 +1,13 @@
+
+program main 
+
+    var x = 1
+
+    do 
+        var z = 3+x 
+        list z
+    end
+
+    list x
+
+end program
