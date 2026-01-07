@@ -8,7 +8,7 @@
 #include <cstdint>
 #include <climits>
 #include <iostream>
-#include "string_hasher.h"
+#include "hasher.h"
 
 #pragma GCC optimize("Ofast","unroll-loops","fast-math")
 
@@ -73,9 +73,11 @@ struct MEMORY{
     VALUE memory[MAX_MEM];
     STACK st;
     STRING_HASHER* string_hasher = nullptr;
+    GOTO_HASHER* goto_hasher = nullptr;
 
-    void init(STRING_HASHER& sh){
+    void init(STRING_HASHER& sh,GOTO_HASHER& gh){
         string_hasher = &sh;
+        goto_hasher = &gh;
     }
 
     inline void store(const uint8_t& addr, const VALUE& val){
