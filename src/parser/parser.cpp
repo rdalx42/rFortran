@@ -4,6 +4,18 @@
 
 // idea: functions dont have return, return last statement evaled.
 
+void PARSER::parse_term(){
+    this->parse_unary();
+    while(this->idx < this->tokens.size()
+          && this->tokens[this->idx].type == TOKEN_TYPE::OPERATOR
+          && (this->tokens[this->idx].value == "*" || this->tokens[this->idx].value == "/")){
+        std::string op = tokens[idx].value;
+        this->advance();
+        this->parse_unary();
+        this->bytecode += "OP " + op + "\n";
+    }
+}
+
 void PARSER::parse_expression(){
     
     this->parse_term(); // first term
@@ -67,17 +79,68 @@ void PARSER::parse_unary(){
         this->parse_factor();
     }
 }
+void PARSER::parse_if() {
+    advance(); // consume 'if'
+    parse_expression(); // condition
 
-void PARSER::parse_term(){
-    this->parse_unary();
-    while(this->idx < this->tokens.size()
-          && this->tokens[this->idx].type == TOKEN_TYPE::OPERATOR
-          && (this->tokens[this->idx].value == "*" || this->tokens[this->idx].value == "/")){
-        std::string op = tokens[idx].value;
-        this->advance();
-        this->parse_unary();
-        this->bytecode += "OP " + op + "\n";
+    uint16_t else_label_id = goto_hasher.label_to_address.size();
+    goto_hasher.add_label(0); // placeholder
+    uint16_t end_label_id = goto_hasher.label_to_address.size();
+    goto_hasher.add_label(0); // placeholder
+
+    bytecode += "GOTO_IF_FALSE " + std::to_string(else_label_id) + "\n";
+    std::cout<<tokens[idx].value<<"!!!\n";
+
+    // Parse IF body
+    if(tokens[idx].type == TOKEN_TYPE::KEYWORD && tokens[idx].value == "do") {
+        parse_scope_start();
+        while(!(idx < tokens.size() &&
+                tokens[idx].type == TOKEN_TYPE::KEYWORD &&
+                (tokens[idx].value == "end" || tokens[idx].value == "else"))) {
+            parse_statement();
+        }
+        parse_scope_end();
+        if(idx < tokens.size() && tokens[idx].type == TOKEN_TYPE::KEYWORD && tokens[idx].value == "end") {
+            advance(); // consume 'end' if no ELSE
+        }else{
+            bytecode+="GOTO " + std::to_string(end_label_id) + "\n";
+        }
+    } else {
+        throw_error("Expected 'do' after if condition");
     }
+    
+    bool has_else = false;
+    idx--;
+    if(idx < tokens.size() && tokens[idx].type == TOKEN_TYPE::KEYWORD && tokens[idx].value == "else") {
+        has_else = true;
+        advance(); // consume 'else'
+      //  std::cout<<tokens[idx].value<<"!<\n";
+
+       // if(idx < tokens.size() && tokens[idx].type == TOKEN_TYPE::KEYWORD && tokens[idx].value == "do") {
+          //  advance(); 
+            bytecode += "LABEL " + std::to_string(else_label_id) + "\n"; // place ELSE label here
+            std::cout<<tokens[idx-1].value<<"<<\n";
+
+            while(!(idx < tokens.size() && tokens[idx].type == TOKEN_TYPE::KEYWORD && tokens[idx].value == "end")) {
+                parse_statement();
+            }
+
+            if(idx >= tokens.size() || tokens[idx].type != TOKEN_TYPE::KEYWORD || tokens[idx].value != "end") {
+                throw_error("Expected 'end' after else block");
+            }
+            advance(); // consume 'end'
+      //  } else {
+            
+      //  }
+    }
+
+    if(!has_else) {
+        // no ELSE: ELSE label should just point to END
+        bytecode += "LABEL " + std::to_string(else_label_id) + "\n";
+    }
+
+    // END label
+    bytecode += "LABEL " + std::to_string(end_label_id) + "\n";
 }
 
 void PARSER::parse_string(){
@@ -229,6 +292,44 @@ void PARSER::parse_var(){
     this->bytecode += "STORE " + std::to_string(var_code) + "\n";
 }
 
+void PARSER::parse_statement() {
+    if(idx >= tokens.size()) return;
+
+    const TOKEN& tok = tokens[idx];
+
+    if(tok.type == TOKEN_TYPE::KEYWORD) {
+        if(tok.value == "var") {
+            parse_var(); // advances idx
+        } 
+        else if(tok.value == "list") {
+            parse_list(); // advances idx
+        }
+        else if(tok.value == "do") {
+            parse_scope_start(); // advances idx past 'do'
+            while(idx < tokens.size() && !(tokens[idx].type == TOKEN_TYPE::KEYWORD && tokens[idx].value == "end")) {
+                parse_statement(); // recursive
+            }
+            parse_scope_end(); // advances idx past 'end'
+        }
+        else if(tok.value == "if") {
+            parse_if(); // must consume entire if/else/end block
+        }
+        else if(tok.value == "end") {
+            advance(); // always advance past 'end' to prevent infinite recursion
+        }
+        else {
+            throw_error("Unknown keyword in statement: " + tok.value);
+        }
+    }
+    else if(tok.type == TOKEN_TYPE::IDENTIFIER) {
+        parse_identifier(); // advances idx
+    }
+    else {
+        throw_error("Unexpected token in statement: " + tok.value);
+    }
+}
+
+
 void PARSER::parse(){
 
     static unsigned int prog_start_tok_idx=-1;
@@ -294,35 +395,9 @@ void PARSER::parse(){
 
     std::cout<<prog_start_tok_idx<<" "<<prog_end_tok_idx<<"\n";
 
-    while(this->idx <= prog_end_tok_idx){
-        const TOKEN& tok = tokens[idx];
-
-        if(tok.type == TOKEN_TYPE::KEYWORD && tok.value == "var"){
-            this->parse_var();
-        } 
-        else if(tok.type == TOKEN_TYPE::KEYWORD && tok.value == "list"){
-            this->parse_list();
-        }
-        else if(tok.type == TOKEN_TYPE::IDENTIFIER){
-            this->parse_identifier();
-        }
-        else if(tok.type == TOKEN_TYPE::KEYWORD && tok.value == "do"){
-            this->parse_scope_start();
-        }
-        else if(tok.type == TOKEN_TYPE::KEYWORD && tok.value == "end" && this->peek().value!="program"){
-            this->parse_scope_end();
-        }else if(tok.type == TOKEN_TYPE::KEYWORD && tok.value == "program"){
-            throw_error("Nested programs are not allowed");
-        }
-        else if(tok.type == TOKEN_TYPE::KEYWORD && tok.value!="program"){
-            this->advance(); 
-        }
-        else {
-            throw_error("Unexpected token in program body: " + tok.value);
-        }
+    while(idx <= prog_end_tok_idx){
+        parse_statement();
     }
-
-
 }
 
 void PARSER::list() const{
