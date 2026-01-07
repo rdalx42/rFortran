@@ -57,12 +57,18 @@ Hash: 0 String: hello, world
 
 # How to run 
 
-```bash 
+# Requierments
+ - C++ 17
+ - G++ (I'm pretty sure you can use other compiles, however it was only tested with G++)
+ - Existing.
 
+```bash 
 git clone [repo_link]
 cd path_to_clone/src
+g++  runtime/*.cpp lexer/*.cpp compiler/*.cpp parser/*.cpp -Iinclude -o b.exe # compile, optional, only if you made some actual changes
 ./b # by default, main.rf will be executed
 ```
+
 
 
 
