@@ -4,7 +4,7 @@
 
 #include "../lexer/lexer.h"
 #include "../error/error.h"
-#include "../runtime/memory/string_hasher.h"
+#include "../runtime/memory/hasher.h"
 #include <unordered_map>
 #include <stack>
 
@@ -12,6 +12,7 @@
 
 struct PARSER{
     STRING_HASHER string_hasher;
+    GOTO_HASHER goto_hasher;
     std::vector<TOKEN>tokens;
     std::string bytecode;
     std::string prog_name="";
@@ -45,6 +46,8 @@ struct PARSER{
         void parse_term();
         void parse_factor();
         void parse_var();
+        void parse_statement();
+        void parse_if();
         void parse_identifier();
         void parse_expression();
         void parse_string();
