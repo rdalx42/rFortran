@@ -127,9 +127,10 @@ Label: 4 Address: 0
 ```bash 
 git clone [repo_link]
 cd path_to_clone/src
-g++  runtime/*.cpp lexer/*.cpp compiler/*.cpp parser/*.cpp -Iinclude -o b.exe # compile, optional, only if you made some actual changes
+g++  runtime/*.cpp lexer/*.cpp compiler/*.cpp parser/*.cpp -Iinclude -o b.exe 
 ./b # by default, main.rf will be executed
 ```
+
 
 
 
