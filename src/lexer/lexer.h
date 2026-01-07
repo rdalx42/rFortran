@@ -55,7 +55,7 @@ struct BTOKEN {
 
 
 const std::string skippables = " \n\t\r";
-const std::vector<std::string>keywords = {"if","while","impl","var","end","else","program","do","list"};
+const std::vector<std::string>keywords = {"if","while","impl","var","end","else","program","do","list","concat"};
 const std::vector<std::string>bytecode_keywords = {"PUSH","LOAD","STORE","OP","NEG","NOT","LIST","LOADSTRING"};
 const std::vector<std::string>expects_number_bytecode_keywords = {"PUSH","LOAD","STORE","LIST","LOADSTRING"};
 const std::vector<std::string>expects_char_bytecode_keywords = {"OP"};
