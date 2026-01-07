@@ -52,14 +52,37 @@ inline bool LEXER::expects_number(const std::string& val) const{
     return std::find(expects_number_bytecode_keywords.begin(),expects_number_bytecode_keywords.end(),val)!=expects_number_bytecode_keywords.end();
 }
 
-void LEXER::lex_num(){
+void LEXER::lex_num() {
     std::string value = "";
-    while(isdigit(this->peek())|| this->peek() == '_' || this->peek() == '.'){
-        value+=this->peek();
+    bool dot_seen = false;
+
+    while (isdigit(this->peek()) || this->peek() == '_' || this->peek() == '.') {
+        char c = this->peek();
+
+        if (c == '_') {
+            // ignore underscores
+            this->advance();
+            continue;
+        }
+
+        if (c == '.') {
+            if (dot_seen) {
+                throw_error("Invalid number: multiple decimal points in numeric literal");
+            }
+            dot_seen = true;
+        }
+
+        value += c;
         this->advance();
     }
-    this->tokens.push_back({TOKEN_TYPE::NUMBER,value});
+
+    if (value.empty()) {
+        throw_error("Expected number but got empty string");
+    }
+
+    this->tokens.push_back({TOKEN_TYPE::NUMBER, value});
 }
+
 
 void LEXER::lex_identifier(){
     std::string value = "";
@@ -91,13 +114,34 @@ void LEXER::lex_string(){
 
 double LEXER::find_number() {
     std::string value;
+    bool dot_seen = false;
+
     while (isdigit(this->peek()) || this->peek() == '.' || this->peek() == '_') {
-        if (this->peek() != '_') value += this->peek();
+        char c = this->peek();
+
+        if (c == '_') {
+            // ignore underscores
+            this->advance();
+            continue;
+        }
+
+        if (c == '.') {
+            if (dot_seen) {
+                throw_error("Invalid number: multiple decimal points in a numeric literal");
+            }
+            dot_seen = true;
+        }
+
+        value += c;
         this->advance();
     }
+
+    if(value.empty()) {
+        throw_error("Expected number but got empty string");
+    }
+
     return std::stod(value);
 }
-
 
 inline bool LEXER::expects_character(const std::string& val) const{
     return std::find(expects_char_bytecode_keywords.begin(),expects_char_bytecode_keywords.end(),val)!=expects_char_bytecode_keywords.end();
@@ -157,6 +201,7 @@ void LEXER::lex(){
                 case '=':
                 case '<':
                 case '>':
+                
                 case '!':
                     this->tokens.push_back({TOKEN_TYPE::OPERATOR,std::string(1,this->peek())});
                     this->advance();
