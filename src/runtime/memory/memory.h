@@ -8,17 +8,19 @@
 #include <cstdint>
 #include <climits>
 #include <iostream>
+#include "string_hasher.h"
 
 #pragma GCC optimize("Ofast","unroll-loops","fast-math")
 
 #define MAX_MEM UINT8_MAX
 
-struct VALUE{
+enum class VALUE_TYPE : uint8_t{
+    NUMBER,
+    NONE,
+    STRING,
+};
 
-    enum class VALUE_TYPE : uint8_t{
-        NUMBER,
-        NONE,
-    };
+struct VALUE{
 
     union {
         double number_value;
@@ -51,10 +53,11 @@ struct STACK{
         const VALUE& tval = stack[sp-1];
         
         switch(tval.value_type){
-            case VALUE::VALUE_TYPE::NUMBER:
+            case VALUE_TYPE::NUMBER:
                 std::cout<<"[Top of Stack] Type: NUMBER Value: "<<tval.data.number_value<<"\n";
                 break;
-            case VALUE::VALUE_TYPE::NONE:
+           
+            case VALUE_TYPE::NONE:
                 std::cout<<"[Top of Stack] Type: NONE\n";
                 break;
             default:
@@ -66,8 +69,14 @@ struct STACK{
 };
 
 struct MEMORY{
+
     VALUE memory[MAX_MEM];
     STACK st;
+    STRING_HASHER* string_hasher = nullptr;
+
+    void init(STRING_HASHER& sh){
+        string_hasher = &sh;
+    }
 
     inline void store(const uint8_t& addr, const VALUE& val){
         memory[addr] = val;
@@ -81,11 +90,14 @@ struct MEMORY{
         const VALUE& tval = memory[Pos];
         
         switch(tval.value_type){
-            case VALUE::VALUE_TYPE::NUMBER:
+            case VALUE_TYPE::NUMBER:
                 std::cout<<"[memory at "<<static_cast<int>(Pos)<<"] Type: NUMBER Value: "<<tval.data.number_value<<"\n";
                 break;
-            case VALUE::VALUE_TYPE::NONE:
+            case VALUE_TYPE::NONE:
                 std::cout<<"[memory at "<<static_cast<int>(Pos)<<"] Type: NONE\n";
+                break;
+            case VALUE_TYPE::STRING:
+                std::cout<<"[memory at "<<static_cast<int>(Pos)<<"] Type: STRING Value: "<<string_hasher->hashed_strings[tval.data.string_pointer_to_string_hash_array]<<" POINTER: "<<tval.data.string_pointer_to_string_hash_array<<"\n";
                 break;
             default:
                 std::cout<<"[memory at "<<static_cast<int>(Pos)<<"] Type: UNKNOWN\n";
