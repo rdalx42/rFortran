@@ -53,6 +53,18 @@ void PARSER::parse_term(){
     }
 }
 
+void PARSER::parse_string(){
+    if(this->string_hasher.string_to_hash.find(this->tokens[this->idx].value) == this->string_hasher.string_to_hash.end()){
+        uint16_t str_hash = this->string_hasher.hashed_strings.size();
+        this->string_hasher.string_to_hash[this->tokens[this->idx].value] = str_hash;
+        this->bytecode+="LOADSTRING "+std::to_string(str_hash)+"\n";
+    }else{
+        uint16_t str_hash = this->string_hasher.string_to_hash[this->tokens[this->idx].value];
+        this->bytecode+="LOADSTRING "+std::to_string(str_hash)+"\n";
+    }
+    
+    this->advance();
+}
 
 void PARSER::parse_identifier(){
     const TOKEN& id_tok = this->tokens[idx];
@@ -98,6 +110,9 @@ void PARSER::parse_factor(){
         }
         this->bytecode += "LOAD " + std::to_string(this->var_codification[tok.value]) + "\n";
         this->advance();
+    }
+    else if(tok.type == TOKEN_TYPE::STRING){
+        this->parse_string();
     }
     else if(tok.type == TOKEN_TYPE::PAREN && tok.value == "("){
         this->advance();
@@ -213,6 +228,7 @@ void PARSER::parse(){
 
             prog_start_tok_idx = idx; // program body starts here
             prog_found = true;
+            
         }
         else if(tok.type == TOKEN_TYPE::KEYWORD && tok.value == "end"){
             advance(); // past 'end'
@@ -224,6 +240,21 @@ void PARSER::parse(){
         else{
             advance(); // advance in all other cases to prevent infinite loop
         }
+    }
+    
+    idx=0;
+
+    bool prog_count=false;
+
+    while(idx<prog_end_tok_idx){
+        TOKEN tok = tokens[idx];
+
+        if(tok.type == TOKEN_TYPE::KEYWORD && tok.value == "program"&&prog_count==false){
+            prog_count=true;
+        }else if(tok.type == TOKEN_TYPE::KEYWORD && tok.value == "program"&&prog_count==true){
+            throw_error("Multiple 'program' declarations found");
+        }
+        idx++;
     }
 
     if(prog_start_tok_idx == -1 || prog_end_tok_idx == -1){
@@ -253,9 +284,11 @@ void PARSER::parse(){
         }
         else if(tok.type == TOKEN_TYPE::KEYWORD && tok.value == "end" && this->peek().value!="program"){
             this->parse_scope_end();
+        }else if(tok.type == TOKEN_TYPE::KEYWORD && tok.value == "program"){
+            throw_error("Nested programs are not allowed");
         }
-        else if(tok.type == TOKEN_TYPE::KEYWORD){
-            this->advance(); // generic keyword, like 'then' or 'else'
+        else if(tok.type == TOKEN_TYPE::KEYWORD && tok.value!="program"){
+            this->advance(); 
         }
         else {
             throw_error("Unexpected token in program body: " + tok.value);
