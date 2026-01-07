@@ -22,9 +22,11 @@ struct COMPILER{
     public:
         void init(const std::vector<BTOKEN>& ibytecode){
             this->bytecode=ibytecode;
+            this->init_goto_addrs();
             this->run();
         }
     private:
+        void init_goto_addrs();
         void run();
 
 };
