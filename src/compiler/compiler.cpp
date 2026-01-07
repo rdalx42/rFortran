@@ -12,8 +12,8 @@ void COMPILER::run() {
             // PUSH literal number onto stack
             // ----------------------------------
             case BTOKEN_TYPE::PUSH: {
-                registers.registers[0].value_type = VALUE::VALUE_TYPE::NUMBER;
-                registers.registers[0].data.number_value = token.data.value;
+                registers.registers[0].value_type = VALUE_TYPE::NUMBER;
+                registers.registers[0].data.number_value = token.data.number_value;
                 memory.st.push(registers.registers[0]);
                 ip++;
                 break;
@@ -24,7 +24,7 @@ void COMPILER::run() {
             // ----------------------------------
 
             case BTOKEN_TYPE::LIST:{
-                this->memory.list_at(token.data.op_code);
+                this->memory.list_at(token.data.number_value);
                 ip++;
                 break;
             }
@@ -33,7 +33,7 @@ void COMPILER::run() {
             // LOAD from memory into stack
             // ----------------------------------
             case BTOKEN_TYPE::LOAD: {
-                uint16_t addr = token.data.value;
+                uint16_t addr = token.data.number_value;
                 registers.registers[0] = memory.memory[addr]; // load into register
                 memory.st.push(registers.registers[0]);
                 ip++;
@@ -44,7 +44,7 @@ void COMPILER::run() {
             // STORE from stack into memory
             // ----------------------------------
             case BTOKEN_TYPE::STORE: {
-                uint16_t addr = token.data.value;
+                uint16_t addr = token.data.number_value;
                 registers.registers[0] = memory.st.pop_ret();
                 memory.memory[addr] = registers.registers[0];
                 ip++;
@@ -71,6 +71,22 @@ void COMPILER::run() {
                 }
 
                 memory.st.push(registers.registers[0]); // push result
+                ip++;
+                break;
+            }
+
+            // ----------------------------------
+            // Load STRING
+            // ----------------------------------
+
+            case BTOKEN_TYPE::LOADSTRING:{
+                uint16_t str_id = token.data.number_value;
+
+                VALUE v;
+                v.value_type = VALUE_TYPE::STRING;
+                v.data.string_pointer_to_string_hash_array = str_id;
+
+                memory.st.push(v);
                 ip++;
                 break;
             }
