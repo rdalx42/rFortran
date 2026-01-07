@@ -74,14 +74,30 @@ void LEXER::lex_identifier(){
     }
 }
 
-int LEXER::find_number(){
+void LEXER::lex_string(){
+    char quote_type = this->src[this->pos];
+    this->advance(); 
     std::string value = "";
-    while(isdigit(this->peek()) || this->peek() == '.'){
+    while(this->peek() != quote_type){
+        if(this->peek() == '\0'){
+            throw_error("Unterminated string literal");
+        }
         value+=this->peek();
         this->advance();
     }
-    return std::stoi(value);
+    this->advance();
+    this->tokens.push_back({TOKEN_TYPE::STRING,value});
 }
+
+double LEXER::find_number() {
+    std::string value;
+    while (isdigit(this->peek()) || this->peek() == '.' || this->peek() == '_') {
+        if (this->peek() != '_') value += this->peek();
+        this->advance();
+    }
+    return std::stod(value);
+}
+
 
 inline bool LEXER::expects_character(const std::string& val) const{
     return std::find(expects_char_bytecode_keywords.begin(),expects_char_bytecode_keywords.end(),val)!=expects_char_bytecode_keywords.end();
@@ -98,14 +114,16 @@ void LEXER::lexb_identifier(){
     if (this->is_bytecode_keyword(value) && this->expects_number(value)) {
         
         this->advance();
-        int nr_found = this->find_number();
-        if(nr_found<=UINT8_MAX){
-            this->btokens.push_back({ string_to_bytecode_token_type(value), static_cast<uint8_t>(nr_found) });
-        }else if(nr_found<=UINT16_MAX){
-            this->btokens.push_back({ string_to_bytecode_token_type(value), static_cast<uint16_t>(nr_found) });
-        }else{
-            throw_error("Number too large for bytecode token: " + std::to_string(nr_found));
-        }
+        double nr_found = this->find_number();
+       // if(std::floor(nr_found)!=nr_found || nr_found<0){
+        this->btokens.push_back({ string_to_bytecode_token_type(value), static_cast<double>(nr_found) });
+     //   }else if(nr_found<=UINT8_MAX && string_to_bytecode_token_type(value)!=BTOKEN_TYPE::LOADSTRING){
+     //       this->btokens.push_back({ string_to_bytecode_token_type(value), static_cast<double>(nr_found) });
+      //  }else if(nr_found<=UINT16_MAX){
+     //       this->btokens.push_back({ string_to_bytecode_token_type(value), static_cast<double>(nr_found) });
+     //   }else{
+     //       throw_error("Number too large for bytecode token: " + std::to_string(nr_found));
+    //    }
     }else if(!this->is_bytecode_keyword(value)){
         throw_error("Unexpected bytecode token: " + value);
     }else if(this->expects_character(value)){ // one single character
@@ -114,7 +132,7 @@ void LEXER::lexb_identifier(){
         this->btokens.push_back({ string_to_bytecode_token_type(value), char_found });
         this->advance();
     }else{
-        this->btokens.push_back({ string_to_bytecode_token_type(value), 0 });
+        this->btokens.push_back({ string_to_bytecode_token_type(value), static_cast<double>(0)  });
         
     }
 }
@@ -147,6 +165,10 @@ void LEXER::lex(){
                 case ')':
                     this->tokens.push_back({TOKEN_TYPE::PAREN,std::string(1,this->peek())});
                     this->advance();
+                    break;
+                case '"':
+                case '\'':
+                    this->lex_string();
                     break;
                 default:
                     throw_error("Unexpected character: " + std::string(1,this->peek()));
@@ -188,11 +210,11 @@ void LEXER::listb(){
         if(this->expects_character(this->bytecode_token_type_to_string(btoken.token_type)) ){
             std::cout << " Value: " << static_cast<char>(btoken.data.char_value);
         }else if(this->expects_number(this->bytecode_token_type_to_string(btoken.token_type)) ){
-            if(!btoken.data.value){
-                std::cout << " Value: " << static_cast<unsigned short int>(btoken.data.op_code);
-            }else{
-                std::cout << " Value: " << static_cast<unsigned int>(btoken.data.op_code);
-            }
+           // if(!btoken.data.char){
+                std::cout << " Value: " << (btoken.data.number_value);
+           // }else{
+          //      std::cout << " Value: " << (btoken.data.op_code);
+           // }
         }
 
         if(I+1==this->btokens.size()){       
