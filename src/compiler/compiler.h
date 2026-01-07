@@ -5,10 +5,12 @@
 #include "../lexer/lexer.h"
 #include "../runtime/memory/memory.h"
 
+#define MAX_REG 16
+
 #pragma GCC optimize("Ofast","unroll-loops","fast-math")
 
 struct REGISTERS{
-    VALUE registers[16]; 
+    VALUE registers[MAX_REG]; 
 };
 
 struct COMPILER{
