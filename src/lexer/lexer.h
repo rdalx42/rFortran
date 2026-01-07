@@ -8,6 +8,7 @@
 #include <fstream>
 #include <cstdint>
 #include <climits>
+#include <cmath>
 
 enum TOKEN_TYPE{
     IDENTIFIER,
@@ -27,6 +28,7 @@ enum class BTOKEN_TYPE: uint8_t {
     NEG,
     NOT,
     LIST,
+    LOADSTRING,
 };
 
 struct TOKEN{
@@ -34,19 +36,28 @@ struct TOKEN{
     std::string value;
 };
 
-struct BTOKEN{
-    BTOKEN_TYPE token_type; 
-    union  {   
-        uint16_t value;
-        uint8_t op_code;
+struct BTOKEN {
+    BTOKEN_TYPE token_type;
+    union Data {
+        double number_value;
         unsigned char char_value;
+
+        Data() {} // default constructor
+
+        Data(double n) : number_value(n) {}
+        Data(unsigned char c) : char_value(c) {}
     } data;
+
+    // Constructors for convenience
+    BTOKEN(BTOKEN_TYPE t, double n) : token_type(t), data(n) {}
+    BTOKEN(BTOKEN_TYPE t, unsigned char c) : token_type(t), data(c) {}
 };
+
 
 const std::string skippables = " \n\t\r";
 const std::vector<std::string>keywords = {"if","while","impl","var","end","else","program","do","list"};
-const std::vector<std::string>bytecode_keywords = {"PUSH","LOAD","STORE","OP","NEG","NOT","LIST"};
-const std::vector<std::string>expects_number_bytecode_keywords = {"PUSH","LOAD","STORE","LIST"};
+const std::vector<std::string>bytecode_keywords = {"PUSH","LOAD","STORE","OP","NEG","NOT","LIST","LOADSTRING"};
+const std::vector<std::string>expects_number_bytecode_keywords = {"PUSH","LOAD","STORE","LIST","LOADSTRING"};
 const std::vector<std::string>expects_char_bytecode_keywords = {"OP"};
 
 struct LEXER{
@@ -68,12 +79,13 @@ struct LEXER{
         inline bool is_bytecode_keyword(const std::string& val) const;
         inline bool expects_number(const std::string& val) const;   
         inline bool expects_character(const std::string& val) const;
-        int find_number();
+        double find_number();
         void lex(); 
         void lexb();
         void list();
         void listb();
         void lexb_identifier();
+        void lex_string();
         
         const std::string token_type_to_string(const TOKEN_TYPE& type) const{
             switch(type){
@@ -109,6 +121,8 @@ struct LEXER{
                 return BTOKEN_TYPE::NOT;
             }else if(type == "LIST"){
                 return BTOKEN_TYPE::LIST;
+            }else if(type == "LOADSTRING"){
+                return BTOKEN_TYPE::LOADSTRING;
             }else{
                 throw std::runtime_error("Unknown bytecode token type: " + type);
             }
@@ -130,6 +144,8 @@ struct LEXER{
                     return "NOT";
                 case BTOKEN_TYPE::LIST:
                     return "LIST";
+                case BTOKEN_TYPE::LOADSTRING:
+                    return "LOADSTRING";
                 default:
                     return "UNKNOWN";
             }
