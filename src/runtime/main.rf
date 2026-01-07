@@ -1,13 +1,35 @@
+program main
 
-program main 
+var a = 5
+var b = 10
+var c = 0
 
-    var x = 1
-
-    do 
-        var z = 3+x 
-        list z
+if 1 do
+    if 5 do
+        c = 100
+    else 
+        c = 50
     end
+else 
+    c = -1
+end
 
-    list x
+list c
+
+var x = 1
+var string = "hello, world"
+var string2 = string
+var string3 = "bye" concat " world!"
+
+list string 
+list string2
+list string3
+
+do 
+    var z = -3.5+x 
+    list z
+end
+
+list x
 
 end program
