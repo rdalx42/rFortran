@@ -1,7 +1,21 @@
 #include "compiler.h"
 #include "../error/error.h"
 
+void COMPILER::init_goto_addrs(){
+    for(size_t i=0;i<bytecode.size();i++){
+        const BTOKEN& token = bytecode[i];
+        if(token.token_type == BTOKEN_TYPE::LABEL){
+            uint16_t label_id = token.data.number_value;
+            this->memory.goto_hasher->set_label_address(label_id, i);
+        }
+    }
+    this->memory.goto_hasher->fill_hashed_goto_positions();
+    this->memory.goto_hasher->list();
+}
+
 void COMPILER::run() {
+
+    ip=0;
 
     while (ip < bytecode.size()) {
         const BTOKEN& token = bytecode[ip];
@@ -82,11 +96,10 @@ void COMPILER::run() {
             case BTOKEN_TYPE::LOADSTRING:{
                 uint16_t str_id = token.data.number_value;
 
-                VALUE v;
-                v.value_type = VALUE_TYPE::STRING;
-                v.data.string_pointer_to_string_hash_array = str_id;
-
-                memory.st.push(v);
+                registers.registers[0].value_type = VALUE_TYPE::STRING;
+                registers.registers[0].data.string_pointer_to_string_hash_array=str_id;
+                
+                memory.st.push(registers.registers[0]);
                 ip++;
                 break;
             }
@@ -110,6 +123,45 @@ void COMPILER::run() {
                 registers.registers[0].data.number_value = !registers.registers[0].data.number_value;
                 memory.st.push(registers.registers[0]);
                 ip++;
+                break;
+            }
+
+            // ----------------------------------
+            // GOTO IF FALSE
+            // ----------------------------------
+
+            case BTOKEN_TYPE::GOTO_IF_FALSE:{
+                registers.registers[0]=memory.st.pop_ret();
+                
+                bool is_false = false;
+                
+                if (registers.registers[0].value_type == VALUE_TYPE::NUMBER) {
+                    is_false = (registers.registers[0].data.number_value == 0);
+                } else if (registers.registers[0].value_type == VALUE_TYPE::STRING) {
+                    is_false = (memory.string_hasher->hashed_strings[registers.registers[0].data.string_pointer_to_string_hash_array].empty());
+                } else {
+                    throw_error("Unsupported value type in GOTO_IF_FALSE");
+                }
+                
+                if(is_false == true){
+                    uint16_t label_id = token.data.number_value;
+                   // std::cout<<"going to: "<<memory.goto_hasher->hashed_goto_positions[label_id] << " from "<<ip<<'\n';
+                    ip = memory.goto_hasher->hashed_goto_positions[label_id]; // jump to label position
+                    
+                }else{
+                    ip++;
+                }
+                break;
+            }
+
+            case BTOKEN_TYPE::LABEL:{
+                ip++;
+                break;
+            }
+
+            case BTOKEN_TYPE::GOTO:{
+                uint16_t label_id = token.data.number_value;
+                ip = memory.goto_hasher->hashed_goto_positions[label_id]; // jump to label position
                 break;
             }
 
