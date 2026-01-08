@@ -1,12 +1,19 @@
 
 # rF - RD fortran 
 
-This is a mini fortran clone I'm updating, it compiles to it's own bytecode
-The main goal for this project is to replicate what modern fortran would look like while also making it memory lightweight, with string polling included!
+This is a mini fortran clone I'm updating, it compiles to it's own bytecode.
+The main goal for this project is to replicate what modern fortran would look like while also making it memory lightweight, with string pooling included!
 
 <img src = "rflogo.png">
 
 # All features:
+
+ - Hybrid stack-based register-based vm (uses registers to perform operations)
+ - String pooling
+ - O(1) memory access
+ - if-else,while loops and scopes
+ - Fast variables, where a variable either holds a value to its number value or an index which points to the string pool.
+
 
 # Notices
  - Concat can only concat strings, not variables which hold strings, concat operations can't be nested: "y" concat "x" concat "z"  
@@ -179,10 +186,9 @@ print(f"ran in: {elapsed_ms:.3f} ms")
 
 # How to run 
 
-# Requierments
- - C++ 17
+ - Requierments
+ - C++ 20
  - G++ (I'm pretty sure you can use other compiler, however rF was only tested with G++)
- - Existing.
 
 ```bash 
 git clone [repo_link]
@@ -190,6 +196,7 @@ cd path_to_clone/src
 g++  runtime/*.cpp lexer/*.cpp compiler/*.cpp parser/*.cpp -Iinclude -o b.exe 
 ./b # by default, main.rf will be executed
 ```
+
 
 
 
