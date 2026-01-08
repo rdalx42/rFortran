@@ -4,6 +4,7 @@
 
 #include "../lexer/lexer.h"
 #include "../runtime/memory/memory.h"
+#include <chrono>
 
 #define MAX_REG 16
 
@@ -22,12 +23,13 @@ struct COMPILER{
     public:
         void init(const std::vector<BTOKEN>& ibytecode){
             this->bytecode=ibytecode;
-            this->init_goto_addrs();
+            this->init_content();
             this->run();
         }
     private:
-        void init_goto_addrs();
+        void init_content();
         void run();
+        
 
 };
 
