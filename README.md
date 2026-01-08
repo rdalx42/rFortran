@@ -18,8 +18,8 @@ var a = 5
 var b = 10
 var c = 0
 
-if 1 do
-    if 5 do
+if 1==1 or 1!=1 do
+    if 5 and 5+5==10 do
         c = 100
     else 
         c = 50
@@ -46,6 +46,12 @@ end
 
 list x
 
+var t = 1000000
+a=0
+while a < t do 
+    a=a+1
+end 
+
 end program
 
 ```
@@ -53,6 +59,7 @@ end program
 # Bytecode
 
 ```
+List: a
 PUSH 5
 STORE 0
 PUSH 10
@@ -60,22 +67,34 @@ STORE 1
 PUSH 0
 STORE 2
 PUSH 1
-GOTO_IF_FALSE 0
+PUSH 1
+OP =
+PUSH 1
+PUSH 1
+OP ~
+OR
+GOTO_IF_FALSE 1
 PUSH 5
-GOTO_IF_FALSE 2
+PUSH 5
+PUSH 5
+OP +
+PUSH 10
+OP =
+AND
+GOTO_IF_FALSE 3
 PUSH 100
 STORE 2
-GOTO 3
-LABEL 2
+GOTO 2
+LABEL 3
 PUSH 50
 STORE 2
-LABEL 3
-GOTO 1
-LABEL 0
+LABEL 2
+GOTO 0
+LABEL 1
 PUSH 1
 NEG
 STORE 2
-LABEL 1
+LABEL 0
 LIST 2
 PUSH 1
 STORE 3
@@ -84,8 +103,6 @@ STORE 4
 LOAD 4
 STORE 5
 LOADSTRING 1
-LOADSTRING 2
-LOADSTRING 3
 STORE 6
 LIST 4
 LIST 5
@@ -97,25 +114,68 @@ OP +
 STORE 7
 LIST 7
 LIST 3
-
-[String Hasher] Hashed Strings:
-Hash: 0 String: hello, world
-Hash: 1 String: bye
-Hash: 2 String:  world!
-Hash: 3 String: bye world!
-[GOTO Hasher] Hashed GOTO Positions:
-Label: 0 Address: 18
-Label: 1 Address: 22
-Label: 2 Address: 13
-Label: 3 Address: 16
-Label: 4 Address: 0
+PUSH 1000000
+STORE 7
+PUSH 0
+STORE 0
+LABEL 4
+LOAD 0
+LOAD 7
+OP <
+GOTO_IF_FALSE 5
+LOAD 0
+PUSH 1
+OP +
+STORE 0
+GOTO 4
+LABEL 5
+LIST 0
 [memory at 2] Type: NUMBER Value: 100
 [memory at 4] Type: STRING Value: hello, world POINTER: 0
 [memory at 5] Type: STRING Value: hello, world POINTER: 0
-[memory at 6] Type: STRING Value: bye world! POINTER: 3
+[memory at 6] Type: STRING Value: bye world! POINTER: 1
 [memory at 7] Type: NUMBER Value: -2.5
 [memory at 3] Type: NUMBER Value: 1
+[memory at 0] Type: NUMBER Value: 1e+06
+Execution time: 84.6279 ms
 ```
+
+# Speed Benchmark (For variable accessing)
+
+- rFortran
+  
+```Pascal
+program speed_benchmark 
+
+var target = 1000000
+var i = 0 
+
+while i < target do 
+    i=i+1
+end
+
+end program 
+```
+
+ - 76.9404 ms
+
+- Python
+
+```python
+import time
+
+start = time.perf_counter()  
+i=0
+t=1000000
+while i < t:
+    
+    i=i+1
+end = time.perf_counter()
+elapsed_ms = (end - start) * 1000 
+print(f"ran in: {elapsed_ms:.3f} ms")
+```
+
+- ran in: 120.162 ms
 
 # How to run 
 
@@ -130,6 +190,7 @@ cd path_to_clone/src
 g++  runtime/*.cpp lexer/*.cpp compiler/*.cpp parser/*.cpp -Iinclude -o b.exe 
 ./b # by default, main.rf will be executed
 ```
+
 
 
 
