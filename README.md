@@ -66,7 +66,6 @@ end program
 # Bytecode
 
 ```
-List: a
 PUSH 5
 STORE 0
 PUSH 10
@@ -196,6 +195,7 @@ cd path_to_clone/src
 g++  runtime/*.cpp lexer/*.cpp compiler/*.cpp parser/*.cpp -Iinclude -o b
 ./b # by default, main.rf will be executed
 ```
+
 
 
 
