@@ -1,24 +1,75 @@
 #include "compiler.h"
+#include "../lexer/lexer.h"
 #include "../error/error.h"
 
-void COMPILER::init_goto_addrs(){
-    for(size_t i=0;i<bytecode.size();i++){
-        const BTOKEN& token = bytecode[i];
-        if(token.token_type == BTOKEN_TYPE::LABEL){
-            uint16_t label_id = token.data.number_value;
-            this->memory.goto_hasher->set_label_address(label_id, i);
+void COMPILER::init_content() {
+    // Iterate all bytecode tokens
+    for (size_t i = 0; i < bytecode.size(); i++) {
+        BTOKEN& token = bytecode[i];
+        
+        switch (token.token_type) {
+            case BTOKEN_TYPE::LABEL: {
+                uint16_t label_id = token.data.number_value;
+                memory.goto_hasher->set_label_address(label_id, i);
+                break;
+            }
+
+            // -----------------------------
+            // Pre-validate binary operators
+            // -----------------------------
+            case BTOKEN_TYPE::OP: {
+                if (i < 2) {
+                    throw_error("Not enough operands for operator at init_content");
+                }
+
+                break;
+            }
+
+            // -----------------------------
+            // AND / OR
+            // -----------------------------
+            case BTOKEN_TYPE::AND:
+            case BTOKEN_TYPE::OR: {
+                if (i < 2) {
+                    throw_error("Not enough operands for AND/OR at init_content");
+                }
+                const BTOKEN& rhs = bytecode[i - 1];
+                const BTOKEN& lhs = bytecode[i - 2];
+
+                
+                break;
+            }
+
+            default:
+                break;
         }
     }
-    this->memory.goto_hasher->fill_hashed_goto_positions();
-    this->memory.goto_hasher->list();
+
+    // Finish goto mapping
+    memory.goto_hasher->fill_hashed_goto_positions();
+    memory.goto_hasher->list();
 }
 
 void COMPILER::run() {
 
+    // for(int i = 0 ; i < bytecode.size();i++){
+
+    //     if(bytecode[i].data.number_value){
+    //         std::cout<<i<<". "<<bytecode_token_type_to_string(bytecode[i].token_type)<<" "<<static_cast<double>(bytecode[i].data.number_value)<<" ";
+    //     }else{
+    //         std::cout<<i<<". "<<bytecode_token_type_to_string(bytecode[i].token_type)<<" "<<static_cast<unsigned char>(bytecode[i].data.char_value)<<" ";
+    //     }
+
+    //     std::cout<<"\n";
+    // }
+    
     ip=0;
+    auto start = std::chrono::high_resolution_clock::now();
 
     while (ip < bytecode.size()) {
         const BTOKEN& token = bytecode[ip];
+       // std::cout<<ip<<"\n";
+       // std::cout<<bytecode_token_type_to_string(token.token_type)<<" - "<<ip<<"\n";
 
         switch (token.token_type) {
 
@@ -72,19 +123,134 @@ void COMPILER::run() {
                 registers.registers[1] = memory.st.pop_ret(); // RHS
                 registers.registers[0] = memory.st.pop_ret(); // LHS
 
-                switch (token.data.char_value) {
-                    case '+': registers.registers[0].data.number_value += registers.registers[1].data.number_value; break;
-                    case '-': registers.registers[0].data.number_value -= registers.registers[1].data.number_value; break;
-                    case '*': registers.registers[0].data.number_value *= registers.registers[1].data.number_value; break;
-                    case '/': registers.registers[0].data.number_value /= registers.registers[1].data.number_value; break;
-                    case '<': registers.registers[0].data.number_value = registers.registers[0].data.number_value < registers.registers[1].data.number_value; break;
-                    case '>': registers.registers[0].data.number_value = registers.registers[0].data.number_value > registers.registers[1].data.number_value; break;
-                    case '=': registers.registers[0].data.number_value = registers.registers[0].data.number_value == registers.registers[1].data.number_value; break;
-                    default:
-                        throw_error("Unknown operator in bytecode: " + std::string(1, token.data.char_value));
+                auto &lhs = registers.registers[0];
+                auto &rhs = registers.registers[1];
+
+                switch(token.data.char_value) {
+                    // -----------------------
+                    // Arithmetic (numbers only)
+                    // -----------------------
+                    case '+':
+                    case '-':
+                    case '*':
+                    case '/':
+                    {
+                        
+                        switch(token.data.char_value) {
+                            case '+': lhs.data.number_value += rhs.data.number_value; break;
+                            case '-': lhs.data.number_value -= rhs.data.number_value; break;
+                            case '*': lhs.data.number_value *= rhs.data.number_value; break;
+                            case '/': lhs.data.number_value /= rhs.data.number_value; break;
+                        }
+                        break;
+                    }
+
+                    // -----------------------
+                    // Comparison
+                    // -----------------------
+                    case '=': // ==
+                    case '~': // !=
+                    case '<':
+                    case '>':
+                    case '[': // <=
+                    case ']': // >=
+                    {
+                        // Numbers
+                        if(lhs.value_type == VALUE_TYPE::NUMBER && rhs.value_type == VALUE_TYPE::NUMBER) {
+                            switch(token.data.char_value) {
+                                case '=': lhs.data.number_value = lhs.data.number_value == rhs.data.number_value; break;
+                                case '~': lhs.data.number_value = lhs.data.number_value != rhs.data.number_value; break;
+                                case '<': lhs.data.number_value = lhs.data.number_value < rhs.data.number_value; break;
+                                case '>': lhs.data.number_value = lhs.data.number_value > rhs.data.number_value; break;
+                                case '[': lhs.data.number_value = lhs.data.number_value <= rhs.data.number_value; break;
+                                case ']': lhs.data.number_value = lhs.data.number_value >= rhs.data.number_value; break;
+                            }
+                        }
+                        // Strings (only == and != make sense)
+                        else if(lhs.value_type == VALUE_TYPE::STRING && rhs.value_type == VALUE_TYPE::STRING) {
+                            const auto &lhs_str = memory.string_hasher->hashed_strings[lhs.data.string_pointer_to_string_hash_array];
+                            const auto &rhs_str = memory.string_hasher->hashed_strings[rhs.data.string_pointer_to_string_hash_array];
+
+                            switch(token.data.char_value) {
+                                case '=': lhs.data.number_value = lhs_str == rhs_str; break;
+                                case '~': lhs.data.number_value = lhs_str != rhs_str; break;
+                                default:
+                                    throw_error("Invalid string comparison, only '!=' and '==' allowed!");
+                                    break;
+                            }
+                        }
+                      
+
+                        lhs.value_type = VALUE_TYPE::NUMBER; // result is always number
+                        break;
+                    }
                 }
 
-                memory.st.push(registers.registers[0]); // push result
+                memory.st.push(lhs); // push result
+                ip++;
+                break;
+            }
+
+            // ----------------------------------
+            // OR / AND
+            // ----------------------------------
+
+            case BTOKEN_TYPE::OR: {
+                registers.registers[1] = memory.st.pop_ret(); // RHS
+                registers.registers[0] = memory.st.pop_ret(); // LHS
+
+                switch (registers.registers[0].value_type){
+                    case VALUE_TYPE::STRING:
+                        throw_error("'and' operation can only be used on numbers!");
+                        break;
+                    default:
+                        break;
+                }
+
+                switch (registers.registers[1].value_type){
+                    case VALUE_TYPE::STRING:
+                        throw_error("'and' operation can only be used on numbers!");
+                        break;
+                    default:
+                        break;
+                }
+
+                registers.registers[0].data.number_value =
+                    (registers.registers[0].data.number_value != 0) ||
+                    (registers.registers[1].data.number_value != 0);
+
+                registers.registers[0].value_type = VALUE_TYPE::NUMBER;
+                memory.st.push(registers.registers[0]);
+                ip++;
+                break;
+            }
+
+            case BTOKEN_TYPE::AND: {
+                registers.registers[1] = memory.st.pop_ret();
+                registers.registers[0] = memory.st.pop_ret();
+                
+                switch (registers.registers[0].value_type){
+                    case VALUE_TYPE::STRING:
+                        throw_error("'and' operation can only be used on numbers!");
+                        break;
+                    default:
+                        break;
+                }
+
+                switch (registers.registers[1].value_type){
+                    case VALUE_TYPE::STRING:
+                        throw_error("'and' operation can only be used on numbers!");
+                        break;
+                    default:
+                        break;
+                }
+
+                registers.registers[0].data.number_value =
+                    (registers.registers[0].data.number_value != 0) &&
+                    (registers.registers[1].data.number_value != 0);
+
+                registers.registers[0].value_type = VALUE_TYPE::NUMBER;
+                memory.st.push(registers.registers[0]);
                 ip++;
                 break;
             }
@@ -169,4 +335,10 @@ void COMPILER::run() {
                 throw_error("Unknown bytecode instruction");
         }
     }
+
+    auto end = std::chrono::high_resolution_clock::now();
+    
+    std::chrono::duration<double, std::milli> duration_ms = end - start;
+    std::cout << "Execution time: " << duration_ms.count() << " ms\n";
+    
 }
