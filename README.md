@@ -193,9 +193,11 @@ print(f"ran in: {elapsed_ms:.3f} ms")
 ```bash 
 git clone [repo_link]
 cd path_to_clone/src
-g++  runtime/*.cpp lexer/*.cpp compiler/*.cpp parser/*.cpp -Iinclude -o b.exe 
+g++  runtime/*.cpp lexer/*.cpp compiler/*.cpp parser/*.cpp -Iinclude -o b
 ./b # by default, main.rf will be executed
 ```
+
+
 
 
 
