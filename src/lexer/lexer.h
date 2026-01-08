@@ -32,6 +32,8 @@ enum class BTOKEN_TYPE: uint8_t {
     GOTO,
     GOTO_IF_FALSE,
     LABEL,
+    AND,
+    OR
 };
 
 struct TOKEN{
@@ -58,8 +60,8 @@ struct BTOKEN {
 
 
 const std::string skippables = " \n\t\r";
-const std::vector<std::string>keywords = {"if","else","while","impl","var","end","else","program","do","list","concat"};
-const std::vector<std::string>bytecode_keywords = {"PUSH","LOAD","STORE","OP","NEG","NOT","LIST","LOADSTRING","GOTO","GOTO_IF_FALSE","LABEL"};
+const std::vector<std::string>keywords = {"if","else","while","impl","var","end","else","program","do","list","concat","and","or"};
+const std::vector<std::string>bytecode_keywords = {"PUSH","LOAD","STORE","OP","NEG","NOT","LIST","LOADSTRING","GOTO","GOTO_IF_FALSE","LABEL","AND","OR"};
 const std::vector<std::string>expects_number_bytecode_keywords = {"PUSH","LOAD","STORE","LIST","LOADSTRING","GOTO","GOTO_IF_FALSE","LABEL"};
 const std::vector<std::string>expects_char_bytecode_keywords = {"OP"};
 
@@ -75,6 +77,7 @@ struct LEXER{
     private:
         int pos=0;
         const char peek() const ;
+        const char next() const;
         inline void advance() ;
         void lex_num();
         void lex_identifier();
@@ -116,6 +119,10 @@ struct LEXER{
                 return BTOKEN_TYPE::LOAD;
             }else if(type == "STORE"){
                 return BTOKEN_TYPE::STORE;
+            }else if(type == "AND"){
+                return BTOKEN_TYPE::AND;
+            }else if(type == "OR"){
+                return BTOKEN_TYPE::OR;
             }else if(type == "OP"){
                 return BTOKEN_TYPE::OP;
             }else if(type == "NEG"){
@@ -162,7 +169,10 @@ struct LEXER{
                     return "GOTO_IF_FALSE";
                 case BTOKEN_TYPE::LABEL:
                     return "LABEL";
-                    
+                case BTOKEN_TYPE::AND:
+                    return "AND";
+                case BTOKEN_TYPE::OR:
+                    return "OR";
                 default:
                     return "UNKNOWN";
             }
