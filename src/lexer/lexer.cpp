@@ -31,6 +31,11 @@ void LEXER::init(const std::string& source_filename, bool is_bytecode){
     
 }
 
+const char LEXER::next() const {
+    if(this->pos+1>=src.size()){return '\0';}
+    return this->src[this->pos+1];
+}
+
 const char LEXER::peek() const {
     if (this->pos >= src.size()) {return '\0';}
     return this->src[pos];
@@ -199,10 +204,35 @@ void LEXER::lex(){
                 case '*':
                 case '/':
                 case '=':
+                    if(this->pos+1<this->src.size() && this->src[this->pos+1] == '='){
+                        this->advance();
+                        this->tokens.push_back({TOKEN_TYPE::OPERATOR,"=="});
+                        this->advance();
+                        break;
+                    }
                 case '<':
+                    if(this->next() == '='){
+                        this->advance();
+                        this->tokens.push_back({TOKEN_TYPE::OPERATOR,"<="});
+                        this->advance();
+                        break;
+                    }
                 case '>':
-                
+                    if(this->next() == '='){
+                        this->advance();
+                        this->tokens.push_back({TOKEN_TYPE::OPERATOR,"<="});
+                        this->advance();
+                        break;
+                    }
                 case '!':
+
+                    if(this->pos+1<this->src.size()&&this->src[this->pos+1] == '='){
+                        this->advance();
+                        this->tokens.push_back({TOKEN_TYPE::OPERATOR,"!="});
+                        this->advance();
+                        break;
+                    }
+                    
                     this->tokens.push_back({TOKEN_TYPE::OPERATOR,std::string(1,this->peek())});
                     this->advance();
                     break;
