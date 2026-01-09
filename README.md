@@ -13,6 +13,7 @@ The main goal for this project is to replicate what modern fortran would look li
  - O(1) memory access
  - if-else,while loops and scopes
  - Fast variables, where a variable either holds a value to its number value or an index which points to the string pool.
+ - Arrays!
 
 
 # Notices
@@ -250,6 +251,7 @@ g++  runtime/*.cpp lexer/*.cpp compiler/*.cpp parser/*.cpp -Iinclude -o b
 g++ runtime/*.cpp lexer/*.cpp compiler/*.cpp parser/*.cpp -Iinclude -O3 -Ofast -funroll-loops -ffast-math -march=native -flto -fomit-frame-pointer -o b
 ./b # by default, main.rf will be executed
 ```
+
 
 
 
