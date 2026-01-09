@@ -241,9 +241,23 @@ void LEXER::lex(){
                     this->tokens.push_back({TOKEN_TYPE::PAREN,std::string(1,this->peek())});
                     this->advance();
                     break;
+                case '{':
+                case '}':
+                    this->tokens.push_back({TOKEN_TYPE::CPAREN,std::string(1,this->peek())});
+                    this->advance();
+                    break;
+                case '[':
+                case ']':
+                    this->tokens.push_back({TOKEN_TYPE::SPAREN,std::string(1,this->peek())});
+                    this->advance();
+                    break;
                 case '"':
                 case '\'':
                     this->lex_string();
+                    break;
+                case ',':
+                    this->tokens.push_back({TOKEN_TYPE::COMMA,","});
+                    this->advance();
                     break;
                 default:
                     throw_error("Unexpected character: " + std::string(1,this->peek()));
