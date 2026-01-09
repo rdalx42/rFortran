@@ -117,6 +117,58 @@ void COMPILER::run() {
             }
 
             // ----------------------------------
+            // ARRAY METHODS
+            // ----------------------------------
+
+            case BTOKEN_TYPE::LOAD_ARRAY:{
+
+                // when you add functions make functions either be defined as void or no void and make it so that you cant store novoid function calls as  objects randomly placed 
+
+                uint8_t addr = token.data.number_value;
+                for(int i = memory.st.sp-1;i>=0;i--){
+                    memory.array_memory[addr][i]=memory.st.pop_ret();
+                }
+
+                registers.registers[0].value_type=VALUE_TYPE::ARRAY;
+                registers.registers[0].data.array_pointer = addr;
+
+                memory.st.push(registers.registers[0]); // push the value               
+
+                ip++;
+                break;
+            }
+
+            case BTOKEN_TYPE::SET_ARRAY_AT:{
+                
+                registers.registers[1]=memory.st.pop_ret(); // index 
+                registers.registers[0] = memory.st.pop_ret(); // value;
+
+                if(registers.registers[1].value_type!=VALUE_TYPE::NUMBER||registers.registers[1].data.number_value>UINT8_MAX||registers.registers[1].data.number_value<0){
+                    throw_error("Array index is invalid!");
+                }
+
+                memory.array_memory[(uint8_t)token.data.number_value][(uint8_t)registers.registers[1].data.number_value]=registers.registers[0];
+
+                ip++;
+                break;
+            }
+
+            case BTOKEN_TYPE::LOAD_ARRAY_AT:{
+
+                registers.registers[0]=memory.st.pop_ret(); // index
+
+                if(registers.registers[0].value_type!=VALUE_TYPE::NUMBER||registers.registers[0].data.number_value<0||registers.registers[0].data.number_value>UINT8_MAX){
+                    throw_error("Array index is invalid!");
+                }
+
+                registers.registers[0]=memory.array_memory[(uint8_t)token.data.number_value][(uint8_t)registers.registers[0].data.number_value];
+                memory.st.push(registers.registers[0]);
+
+                ip++;
+                break;
+            }
+        
+            // ----------------------------------
             // Binary operator: pop 2, compute, push
             // ----------------------------------
             case BTOKEN_TYPE::OP: {
@@ -125,6 +177,10 @@ void COMPILER::run() {
 
                 auto &lhs = registers.registers[0];
                 auto &rhs = registers.registers[1];
+
+                if (lhs.value_type == VALUE_TYPE::ARRAY || rhs.value_type == VALUE_TYPE::ARRAY) {
+                    throw_error("Operations cannot be used on arrays");
+                }
 
                 switch(token.data.char_value) {
                     // -----------------------
