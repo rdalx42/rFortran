@@ -16,7 +16,8 @@ The main goal for this project is to replicate what modern fortran would look li
 
 
 # Notices
- - Concat can only concat strings, not variables which hold strings, concat operations can't be nested: "y" concat "x" concat "z"  
+ - Concat can only concat strings, not variables which hold strings, concat operations can't be nested: "y" concat "x" concat "z"
+ - Arrays can't initialized as empty, there are 256 array slots available, each array having 256 value slots.
 
 ```pascal 
 program main
@@ -54,10 +55,27 @@ end
 list x
 
 var t = 1000000
+
 a=0
 while a < t do 
     a=a+1
+   
 end 
+
+b = [0]
+var i = 0 
+
+while i < 256 do 
+    if i < 100 do 
+        b[i]=i
+    else 
+        b[i] = "hello" concat ", bye!"
+    end 
+    i=i+1
+end
+
+list b 
+
 
 end program
 
@@ -135,20 +153,55 @@ OP +
 STORE 0
 GOTO 4
 LABEL 5
-LIST 0
+PUSH 0
+LOAD_ARRAY 0
+STORE 1
+PUSH 0
+STORE 8
+LABEL 6
+LOAD 8
+PUSH 256
+OP <
+GOTO_IF_FALSE 7
+LOAD 8
+PUSH 100
+OP <
+GOTO_IF_FALSE 9
+LOAD 8
+LOAD 8
+SET_ARRAY_AT 0
+GOTO 8
+LABEL 9
+LOADSTRING 2
+LOAD 8
+SET_ARRAY_AT 0
+LABEL 8
+LOAD 8
+PUSH 1
+OP +
+STORE 8
+GOTO 6
+LABEL 7
+LIST 1
+
 [memory at 2] Type: NUMBER Value: 100
 [memory at 4] Type: STRING Value: hello, world POINTER: 0
 [memory at 5] Type: STRING Value: hello, world POINTER: 0
 [memory at 6] Type: STRING Value: bye world! POINTER: 1
 [memory at 7] Type: NUMBER Value: -2.5
 [memory at 3] Type: NUMBER Value: 1
-[memory at 0] Type: NUMBER Value: 1e+06
-Execution time: 84.6279 ms
+[memory at 1] Type: ARRAY (Addr 0) Elements:
+[0]: NUMBER: 0
+[1]: NUMBER: 1
+....
+[253]: STRING: hello, bye!
+[254]: STRING: hello, bye!
+Execution time: 49.6773 ms
 ```
 
 # Speed Benchmark (For variable accessing)
 
-- rFortran
+- rFortran (Compiled with optimizations)
   
 ```Pascal
 program speed_benchmark 
@@ -163,7 +216,7 @@ end
 end program 
 ```
 
- - 76.9404 ms
+ - 36.9804 ms
 
 - Python
 
@@ -193,8 +246,11 @@ print(f"ran in: {elapsed_ms:.3f} ms")
 git clone [repo_link]
 cd path_to_clone/src
 g++  runtime/*.cpp lexer/*.cpp compiler/*.cpp parser/*.cpp -Iinclude -o b
+# or you can compile it with extra optimizations
+g++ runtime/*.cpp lexer/*.cpp compiler/*.cpp parser/*.cpp -Iinclude -O3 -Ofast -funroll-loops -ffast-math -march=native -flto -fomit-frame-pointer -o b
 ./b # by default, main.rf will be executed
 ```
+
 
 
 
