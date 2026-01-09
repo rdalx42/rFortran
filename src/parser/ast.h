@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <memory>
 #include <functional>
+#include <climits>
 
 #ifndef AST_H
 #define AST_H
@@ -16,10 +17,13 @@ enum class expression_type : uint8_t {
     LITERAL,    // number or string literal
     IDENTIFIER, // variable
     UNARY,      // unary op
-    BINARY      // binary op
+    BINARY,      // binary op
+    ARRAY_LITERAL,
+    ARRAY_ACCESS,
 };
 
 struct EXPR {
+
     expression_type type;
 
     TOKEN_TYPE literal_type; 
@@ -32,6 +36,11 @@ struct EXPR {
     std::string binary_op;
     std::shared_ptr<EXPR> left;
     std::shared_ptr<EXPR> right;
+
+    // --- ARRAY SUPPORT ---
+    std::vector<std::shared_ptr<EXPR>> array_elements; // for [a, b, c]
+    std::shared_ptr<EXPR> array_index;                 // for arr[i]
+    std::string array_name;                         // variable holding the array
 };
 
 // -------------------- Statements --------------------
@@ -48,6 +57,7 @@ struct STMT {
     stmt_type type;
 
     std::string var_name;                 // var decl or assignment
+    std::shared_ptr<EXPR>array_assign_expr; // array assignment expression x[expr]
     std::shared_ptr<EXPR> init_expr;      // var initializer
     std::shared_ptr<EXPR> assign_expr;    // assignment expression
     std::string list_var_name;            // list statement variable
@@ -72,12 +82,19 @@ struct AST {
     std::string prog_name="";
     std::stack<short int>scope_var_count;
     std::unordered_map<std::string,unsigned short int>var_codification;
+    std::unordered_map<std::string,uint8_t>array_codification;
+    std::unordered_map<std::string,bool>variables_in_declaration_proccess;  /* 
+    the reason why we do this is simple, array evaluation needs direct variable name but we don't register the var name
+    before we parse the expression, which leads to an error, therefore we pre register it and than we erase it
+    */
+  
     int idx=0;
 
     public:
         void init(const std::vector<TOKEN>& tokens){
             this->tokens = tokens;
             this->parse();
+            this->check_array_rules();
             this->list();
             this->init_codegen();
             this->list_bytecode();
@@ -96,6 +113,8 @@ struct AST {
 
         // -------------------- Expression Parsing --------------------
         std::shared_ptr<EXPR> parse_expression();
+        std::shared_ptr<EXPR> parse_array_literal();
+        std::shared_ptr<EXPR> parse_array_access(std::shared_ptr<EXPR>node);
         std::shared_ptr<EXPR> parse_or();
         std::shared_ptr<EXPR> parse_and();
         std::shared_ptr<EXPR> parse_comparision();
@@ -113,6 +132,13 @@ struct AST {
         std::vector<std::shared_ptr<STMT>> parse_block();
         std::shared_ptr<STMT>parse_list();
         std::shared_ptr<STMT>parse_block_stmt();
+
+        // -------------------- Post Parsing ---------------------
+
+        void check_array_rules();
+        void check_stmt_array_rules(const std::shared_ptr<STMT>& stmt, bool in_assignment_or_var, const std::string& current_var);
+        void check_expr_array_rules(const std::shared_ptr<EXPR>& expr, bool in_assignment_or_var, const std::string& current_var);
+
 
         // -------------------- Scope Helpers --------------------
         
