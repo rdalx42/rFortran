@@ -17,6 +17,9 @@ enum TOKEN_TYPE{
     OPERATOR,
     PAREN,
     KEYWORD,
+    CPAREN,
+    SPAREN,
+    COMMA,
     NONE
 };
 
@@ -33,7 +36,10 @@ enum class BTOKEN_TYPE: uint8_t {
     GOTO_IF_FALSE,
     LABEL,
     AND,
-    OR
+    OR,
+    SET_ARRAY_AT, // array_name, sets array at index
+    LOAD_ARRAY_AT, // array_name, pushes array at index
+    LOAD_ARRAY, // array_name, loads array
 };
 
 struct TOKEN{
@@ -61,8 +67,8 @@ struct BTOKEN {
 
 const std::string skippables = " \n\t\r";
 const std::vector<std::string>keywords = {"if","else","while","impl","var","end","else","program","do","list","concat","and","or"};
-const std::vector<std::string>bytecode_keywords = {"PUSH","LOAD","STORE","OP","NEG","NOT","LIST","LOADSTRING","GOTO","GOTO_IF_FALSE","LABEL","AND","OR"};
-const std::vector<std::string>expects_number_bytecode_keywords = {"PUSH","LOAD","STORE","LIST","LOADSTRING","GOTO","GOTO_IF_FALSE","LABEL"};
+const std::vector<std::string>bytecode_keywords = {"PUSH","LOAD","STORE","OP","NEG","NOT","LIST","LOADSTRING","GOTO","GOTO_IF_FALSE","LABEL","AND","OR","LOAD_ARRAY","SET_ARRAY_AT","LOAD_ARRAY_AT"};
+const std::vector<std::string>expects_number_bytecode_keywords = {"PUSH","LOAD","STORE","LIST","LOADSTRING","GOTO","GOTO_IF_FALSE","LABEL","LOAD_ARRAY","SET_ARRAY_AT","LOAD_ARRAY_AT"};
 const std::vector<std::string>expects_char_bytecode_keywords = {"OP"};
 
 struct LEXER{
@@ -105,6 +111,12 @@ struct LEXER{
                     return "OPERATOR";
                 case TOKEN_TYPE::PAREN:
                     return "PAREN";
+                case TOKEN_TYPE::SPAREN:
+                    return "SPAREN";
+                case TOKEN_TYPE::CPAREN:
+                    return "CPAREN";
+                case TOKEN_TYPE::COMMA:
+                    return "COMMA";
                 case TOKEN_TYPE::KEYWORD:
                     return "KEYWORD";
                 default:
@@ -123,8 +135,14 @@ struct LEXER{
                 return BTOKEN_TYPE::AND;
             }else if(type == "OR"){
                 return BTOKEN_TYPE::OR;
+            }else if(type == "LOAD_ARRAY"){
+                return BTOKEN_TYPE::LOAD_ARRAY;
+            }else if(type == "SET_ARRAY_AT"){
+                return BTOKEN_TYPE::SET_ARRAY_AT;
             }else if(type == "OP"){
                 return BTOKEN_TYPE::OP;
+            }else if(type == "LOAD_ARRAY_AT"){
+                return BTOKEN_TYPE::LOAD_ARRAY_AT;
             }else if(type == "NEG"){
                 return BTOKEN_TYPE::NEG;
             }else if(type == "NOT"){
@@ -165,6 +183,12 @@ struct LEXER{
                     return "LOADSTRING";
                 case BTOKEN_TYPE::GOTO:
                     return "GOTO";
+                case BTOKEN_TYPE::LOAD_ARRAY:
+                    return "LOAD_ARRAY";
+                case BTOKEN_TYPE::LOAD_ARRAY_AT:
+                    return "LOAD_ARRAY_AT";
+                case BTOKEN_TYPE::SET_ARRAY_AT:
+                    return "SET_ARRAY_AT";
                 case BTOKEN_TYPE::GOTO_IF_FALSE:
                     return "GOTO_IF_FALSE";
                 case BTOKEN_TYPE::LABEL:
