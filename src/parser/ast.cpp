@@ -9,6 +9,7 @@ inline bool is_keyword(const TOKEN& tok, const std::string& kw) {
     return tok.type == TOKEN_TYPE::KEYWORD && tok.value == kw;
 }
 
+
 // -------------------- Expressions --------------------
 std::shared_ptr<EXPR> AST::parse_expression() {
     return parse_or();
@@ -99,6 +100,46 @@ std::shared_ptr<EXPR> AST::parse_term() {
     return node;
 }
 
+std::shared_ptr<EXPR> AST::parse_array_access(std::shared_ptr<EXPR> node) {
+    while(idx < tokens.size() && tokens[idx].type == TOKEN_TYPE::SPAREN && tokens[idx].value == "[") {
+        idx++; // skip '['
+        auto index_expr = parse_expression();
+        if(idx >= tokens.size() || tokens[idx].value != "]")
+            throw_error("Expected ']' after array index");
+        idx++;
+
+        auto access_node = std::make_shared<EXPR>();
+        access_node->type = expression_type::ARRAY_ACCESS;
+        access_node->array_name = node->name;  
+        access_node->array_index = index_expr;
+
+        node = access_node;
+    }
+    return node;
+}
+
+std::shared_ptr<EXPR> AST::parse_array_literal(){
+    if(tokens[idx].type!=TOKEN_TYPE::SPAREN || tokens[idx].value!="["){
+        return nullptr;
+    }
+
+    auto node = std::make_shared<EXPR>();
+    node->type=expression_type::ARRAY_LITERAL;
+    idx++;
+
+    while(idx<tokens.size() && !(tokens[idx].type == TOKEN_TYPE::SPAREN && tokens[idx].value == "]")){
+        node->array_elements.push_back(parse_expression());
+        if(idx<tokens.size()&&tokens[idx].type == TOKEN_TYPE::COMMA){idx++;}
+    }
+
+    if(idx>=tokens.size() || tokens[idx].value!="]"){
+        throw_error("Expected ']' for array literal");
+    }
+
+    idx++;
+    return node;
+}
+
 std::shared_ptr<EXPR> AST::parse_unary() {
     if(idx < tokens.size() && tokens[idx].type == TOKEN_TYPE::OPERATOR &&
        (tokens[idx].value == "+" || tokens[idx].value == "-" || tokens[idx].value == "!")) {
@@ -128,6 +169,9 @@ std::shared_ptr<EXPR> AST::parse_factor() {
         node->type = expression_type::IDENTIFIER;
         node->name = tok.value;
         idx++;
+        if(idx<tokens.size()&&tokens[idx].type == TOKEN_TYPE::SPAREN && tokens[idx].value == "["){
+            return parse_array_access(node);
+        }
     } 
     else if(tok.type == TOKEN_TYPE::PAREN && tok.value == "(") {
         idx++;
@@ -136,6 +180,9 @@ std::shared_ptr<EXPR> AST::parse_factor() {
             throw_error("Expected ')' after expression");
         idx++;
     } 
+    else if(tok.type == TOKEN_TYPE::SPAREN && tok.value == "["){
+        return parse_array_literal();
+    }
     else {
         throw_error("Unexpected token in factor: " + tok.value);
     }
@@ -156,8 +203,27 @@ std::shared_ptr<STMT> AST::parse_statement() {
         else { idx++; return nullptr; }
     }
     else if(tok.type == TOKEN_TYPE::IDENTIFIER) {
-        if(idx + 1 < tokens.size() && tokens[idx + 1].type == TOKEN_TYPE::OPERATOR && tokens[idx + 1].value == "=") {
-            return parse_assignment();
+        
+        auto lhs_expr = parse_factor(); 
+
+        if(idx < tokens.size() && tokens[idx].type == TOKEN_TYPE::OPERATOR && tokens[idx].value == "=") {
+            idx++; 
+            auto rhs_expr = parse_expression();
+
+            auto node = std::make_shared<STMT>();
+            node->type = stmt_type::ASSIGNMENT;
+            node->assign_expr = rhs_expr;
+
+            
+            if(lhs_expr->type == expression_type::IDENTIFIER) {
+                node->var_name = lhs_expr->name;
+            } else if(lhs_expr->type == expression_type::ARRAY_ACCESS) {
+                node->array_assign_expr = lhs_expr; 
+            } else {
+                throw_error("Invalid LHS in assignment");
+            }
+
+            return node;
         } else {
             throw_error("Unexpected identifier: " + tok.value);
         }
@@ -266,14 +332,6 @@ std::vector<std::shared_ptr<STMT>> AST::parse_block() {
     return block;
 }
 
-
-void AST::list() {
-    std::cout << "Program: " << this->program_name << "\n";
-    for(const auto& stmt : statements) {
-        list_stmt(stmt, 0);
-    }
-}
-
 void AST::list_stmt(const std::shared_ptr<STMT>& stmt, int indent) {
     if(!stmt) return;
     std::string pad(indent * 2, ' ');
@@ -339,6 +397,30 @@ void AST::list_expr(const std::shared_ptr<EXPR>& expr, int indent) {
             list_expr(expr->right, 0);
             std::cout << ")";
             break;
+        case expression_type::ARRAY_LITERAL:
+            std::cout << pad << "ArrayLiteral([";
+            for(size_t i = 0; i < expr->array_elements.size(); ++i) {
+                list_expr(expr->array_elements[i], 0);
+                if(i != expr->array_elements.size() - 1)
+                    std::cout << ", ";
+            }
+            std::cout << "])";
+            break;
+        case expression_type::ARRAY_ACCESS:
+            std::cout << pad << "ArrayAccess(" << expr->array_name << "[";
+            list_expr(expr->array_index, 0);
+            std::cout << "])";
+            break;
+        default:
+            std::cout << pad << "UnknownExpr";
+            break;
+    }
+}
+
+void AST::list() {
+    std::cout << "Program: " << this->program_name << "\n";
+    for(const auto& stmt : statements) {
+        list_stmt(stmt, 0);
     }
 }
 
@@ -418,6 +500,83 @@ void AST::parse_scope_end(){
     }
 }
 
+void AST::check_array_rules() {
+    for (auto& stmt : statements) {
+        check_stmt_array_rules(stmt, false,"");
+    }
+}
+
+
+void AST::check_stmt_array_rules(const std::shared_ptr<STMT>& stmt, bool in_assignment_or_var, const std::string& current_var) {
+    if (!stmt) return;
+
+    switch (stmt->type) {
+        case stmt_type::VAR_DECL:
+           
+            check_expr_array_rules(stmt->init_expr, true, stmt->var_name);
+            break;
+        case stmt_type::ASSIGNMENT:
+           
+            check_expr_array_rules(stmt->assign_expr, true, stmt->var_name);
+            break;
+        case stmt_type::IF:
+            check_expr_array_rules(stmt->condition, false, "");
+            for (auto& s : stmt->then_block) check_stmt_array_rules(s, false, "");
+            for (auto& s : stmt->else_block) check_stmt_array_rules(s, false, "");
+            break;
+        case stmt_type::WHILE:
+            check_expr_array_rules(stmt->condition, false, "");
+            for (auto& s : stmt->then_block) check_stmt_array_rules(s, false, "");
+            break;
+        case stmt_type::BLOCK:
+            for (auto& s : stmt->then_block) check_stmt_array_rules(s, false, "");
+            break;
+        case stmt_type::LIST:
+            break;
+    }
+}
+
+void AST::check_expr_array_rules(const std::shared_ptr<EXPR>& expr, bool in_assignment_or_var, const std::string& current_var) {
+    if (!expr) return;
+
+    switch (expr->type) {
+        case expression_type::ARRAY_LITERAL:
+            if (!in_assignment_or_var) {
+                throw_error("Array literals are only allowed in variable declarations or assignments");
+            }
+            
+            expr->array_name = current_var;
+
+            if(expr->array_elements.empty()){
+                throw_error("Empty arrays are not allowed");
+            }
+
+            for (auto& el : expr->array_elements) {
+                if (el->type == expression_type::ARRAY_LITERAL) {
+                    throw_error("Nested array literals are not allowed");
+                }
+                check_expr_array_rules(el, true, current_var); 
+            }
+            break;
+        case expression_type::ARRAY_ACCESS:
+            check_expr_array_rules(expr->array_index, false, "");
+            break;
+        case expression_type::UNARY:
+            check_expr_array_rules(expr->unary_expr, false, "");
+            break;
+        case expression_type::BINARY:
+            check_expr_array_rules(expr->left, false, "");
+            check_expr_array_rules(expr->right, false, "");
+            
+            break;
+        case expression_type::IDENTIFIER:
+        case expression_type::LITERAL:
+            break;
+        default:
+            break;
+    }
+}
+
 void AST::codegen_expr(std::shared_ptr<EXPR>& expr){
     if(!expr){return;}
     
@@ -439,6 +598,55 @@ void AST::codegen_expr(std::shared_ptr<EXPR>& expr){
             }else{
                 // simply push number
                 this->bytecode+="PUSH " + expr->value + "\n";
+            }
+
+            break;
+        }
+
+        case expression_type::ARRAY_ACCESS:{
+
+            if(this->var_codification.find(expr->array_name) == this->var_codification.end()) {
+                throw_error("Invalid variable of name: " + expr->array_name);
+                break;
+            }
+
+            if(this->array_codification.find(expr->array_name) == this->array_codification.end()){
+                throw_error("Invalid array of name: " + expr->array_name);
+                break;
+            }
+
+            this->codegen_expr(expr->array_index);
+
+            this->bytecode+="LOAD_ARRAY_AT " + std::to_string(this->array_codification[expr->array_name]) + "\n"; // loads array at top index
+
+            break;
+        }
+
+        case expression_type::ARRAY_LITERAL:{
+            
+            for(auto& Expr:expr->array_elements){ // write all array elements
+                this->codegen_expr(Expr); 
+            }
+
+            const std::string& array_expression_name = expr->array_name;
+
+            if(this->var_codification.find(array_expression_name) == this->var_codification.end() && this->variables_in_declaration_proccess.find(array_expression_name)==this->variables_in_declaration_proccess.end()){
+                throw_error("Invalid array variable of name: " + array_expression_name);
+            }
+
+            if(this->array_codification.find(array_expression_name)==this->array_codification.end()){
+                // assign new array 
+                if(this->array_codification.size()-1 == UINT8_MAX){
+                    throw_error("Too many arrays declared in program!");
+                }
+
+                uint8_t assignee_idx = this->array_codification.size();
+
+                this->array_codification[array_expression_name] = assignee_idx;
+
+                this->bytecode+="LOAD_ARRAY " + std::to_string(this->array_codification[array_expression_name]) + "\n";
+            }else{
+                this->bytecode+="LOAD_ARRAY " + std::to_string(this->array_codification[array_expression_name]) + "\n"; // overwrite assignee array.
             }
 
             break;
@@ -551,26 +759,41 @@ void AST::codegen(std::shared_ptr<STMT>&stmt){
             }
 
             uint16_t var_code = var_codification.size();
-            
+            this->variables_in_declaration_proccess[var_name]=true;
             this->codegen_expr(stmt->init_expr);
+            this->variables_in_declaration_proccess.erase(var_name);
             this->var_codification[var_name] = var_code;
             this->bytecode += "STORE " + std::to_string(var_code) + "\n";
-
+            
             break;
         }
 
         case stmt_type::ASSIGNMENT:{
+            
 
-            const std::string& var_name = stmt->var_name;
+            if(!stmt->array_assign_expr){
 
-            if(this->var_codification.find(var_name) == this->var_codification.end()){
-                throw_error("Variable of name: " + var_name + " hasn't been declared");
+                const std::string& var_name = stmt->var_name;
+
+                if(this->var_codification.find(var_name) == this->var_codification.end()){
+                    throw_error("Variable of name: " + var_name + " hasn't been declared");
+                }
+
+                uint16_t var_code = var_codification[var_name];
+                this->codegen_expr(stmt->assign_expr);
+                this->bytecode += "STORE " + std::to_string(var_code) + "\n";
+            }else{
+
+                const std::string& var_name = stmt->array_assign_expr->array_name;
+
+                if(this->array_codification.find(var_name) == this->array_codification.end()){
+                    throw_error("Variable of name: " + var_name + " hasn't been declared");
+                }
+                
+                codegen_expr(stmt->assign_expr); 
+                codegen_expr(stmt->array_assign_expr->array_index); // push index
+                this->bytecode += "SET_ARRAY_AT " + std::to_string(this->array_codification[stmt->array_assign_expr->array_name]) + "\n";
             }
-
-            uint16_t var_code = var_codification[var_name];
-
-            this->codegen_expr(stmt->assign_expr);
-            this->bytecode += "STORE " + std::to_string(var_code) + "\n";
 
             break;
         }
