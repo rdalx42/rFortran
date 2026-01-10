@@ -57,6 +57,10 @@ inline bool LEXER::expects_number(const std::string& val) const{
     return std::find(expects_number_bytecode_keywords.begin(),expects_number_bytecode_keywords.end(),val)!=expects_number_bytecode_keywords.end();
 }
 
+// inline bool LEXER::expects_2number(const std::string& val) const {
+//     return std::find(expects_two_number_bytecode_keywords.begin(),expects_two_number_bytecode_keywords.end(),val)!=expects_two_number_bytecode_keywords.end();
+// }
+
 void LEXER::lex_num() {
     std::string value = "";
     bool dot_seen = false;
@@ -199,6 +203,15 @@ void LEXER::lex(){
         }
         else{
             switch(this->peek()){
+                case ':':
+                    if(this->pos+1<this->src.size() && this->src[this->pos+1] == ':'){
+                        this->tokens.push_back({TOKEN_TYPE::ACCESS,"::"});
+                        this->advance();
+                        this->advance();
+                    }
+                    break;
+
+                    throw_error("Expected ':' after ':' character to form ACCESS TOKEN");
                 case '+':
                 case '-':
                 case '*':
