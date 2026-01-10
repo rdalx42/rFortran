@@ -6,18 +6,20 @@
 #include <fstream>
 
 int main(void){
-
+ 
     LEXER lexer;
     lexer.init("runtime/main.rf");
+    COMPILER compiler;
     AST ast;
     
     ast.init(lexer.tokens);
 
     LEXER blexer;
     blexer.init(ast.bytecode,true);
-    COMPILER compiler;
-    compiler.memory.init(ast.string_hasher,ast.goto_hasher);
-    compiler.init(blexer.btokens);
+    
+    compiler.memory.init(ast.string_hasher,ast.goto_hasher,ast.enum_map); 
 
+    compiler.init(blexer.btokens); 
+    
     return 0;
 }
