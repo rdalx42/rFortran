@@ -14,6 +14,7 @@ The main goal for this project is to replicate what modern fortran would look li
  - if-else,while loops and scopes
  - Fast variables, where a variable either holds a value to its number value or an index which points to the string pool.
  - Arrays!
+ - Enums!
 
 
 # Notices
@@ -77,6 +78,20 @@ end
 
 list b 
 
+enum cargo [
+  BIG,
+  SMALL,
+  MINI,
+  MEDIUM
+]
+
+var cargo1 = cargo::SMALL
+var cargo2 = cargo::BIG
+var cargo3 = cargo::BIG
+
+if cargo1 == cargo2 or cargo3==cargo2 do
+    list cargo1
+end
 
 end program
 
@@ -184,6 +199,33 @@ STORE 8
 GOTO 6
 LABEL 7
 LIST 1
+PUSH 1
+STORE_ENUM_VALUE 0
+PUSH 1
+STORE_ENUM_VALUE 1
+PUSH 1
+STORE_ENUM_VALUE 2
+PUSH 1
+STORE_ENUM_VALUE 3
+PUSH 1
+PUSH_ENUM_VALUE 1
+STORE 10
+PUSH 1
+PUSH_ENUM_VALUE 0
+STORE 11
+PUSH 1
+PUSH_ENUM_VALUE 0
+STORE 12
+LOAD 10
+LOAD 11
+OP =
+LOAD 12
+LOAD 11
+OP =
+OR
+GOTO_IF_FALSE 10
+LIST 10
+LABEL 10
 
 [memory at 2] Type: NUMBER Value: 100
 [memory at 4] Type: STRING Value: hello, world POINTER: 0
@@ -197,6 +239,7 @@ LIST 1
 ....
 [253]: STRING: hello, bye!
 [254]: STRING: hello, bye!
+[memory at 10] Type: ENUM_OBJECT (Type 1, Value 1)
 Execution time: 49.6773 ms
 ```
 
@@ -251,6 +294,7 @@ g++  runtime/*.cpp lexer/*.cpp compiler/*.cpp parser/*.cpp -Iinclude -o b
 g++ runtime/*.cpp lexer/*.cpp compiler/*.cpp parser/*.cpp -Iinclude -O3 -Ofast -funroll-loops -ffast-math -march=native -flto -fomit-frame-pointer -o b
 ./b # by default, main.rf will be executed
 ```
+
 
 
 
