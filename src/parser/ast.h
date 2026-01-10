@@ -20,6 +20,8 @@ enum class expression_type : uint8_t {
     BINARY,      // binary op
     ARRAY_LITERAL,
     ARRAY_ACCESS,
+    ENUM_LITERAL,
+    ENUM_ACCESS,
 };
 
 struct EXPR {
@@ -37,6 +39,11 @@ struct EXPR {
     std::shared_ptr<EXPR> left;
     std::shared_ptr<EXPR> right;
 
+    // --- ENUM SUPPORT --- 
+    std::vector<std::string>enum_elements;
+    std::string enum_name;
+    std::string enum_value;
+
     // --- ARRAY SUPPORT ---
     std::vector<std::shared_ptr<EXPR>> array_elements; // for [a, b, c]
     std::shared_ptr<EXPR> array_index;                 // for arr[i]
@@ -50,7 +57,8 @@ enum class stmt_type : uint8_t {
     LIST,       // list statement
     IF,         // if statement
     WHILE,      // while loop
-    BLOCK       // scope block
+    BLOCK,       // scope block
+    ENUM,
 };
 
 struct STMT {
@@ -65,6 +73,8 @@ struct STMT {
     std::shared_ptr<EXPR> condition;      // if or while condition
     std::vector<std::shared_ptr<STMT>> then_block; // if/while/block body
     std::vector<std::shared_ptr<STMT>> else_block; // optional else
+    std::string enum_name ; // enum decl
+    std::shared_ptr<EXPR> enum_body;
 
     bool has_else=false;
 };
@@ -76,7 +86,7 @@ struct AST {
     
     STRING_HASHER string_hasher;
     GOTO_HASHER goto_hasher;
-    
+   
     std::vector<TOKEN>tokens;
     std::string bytecode="";
     std::string prog_name="";
@@ -87,7 +97,11 @@ struct AST {
     the reason why we do this is simple, array evaluation needs direct variable name but we don't register the var name
     before we parse the expression, which leads to an error, therefore we pre register it and than we erase it
     */
-  
+          
+    std::unordered_map<int,std::vector<int>>enum_map; // enum idx=> enum values
+    std::unordered_map<std::string,std::vector<std::string>>enum_value_to_enums; // enum holder -> enum clasifications
+    std::unordered_map<std::string,uint8_t>enum_name_to_uint8;
+ //   VALUE em[MAX_ENUM][MAX_ENUM];
     int idx=0;
 
     public:
@@ -107,6 +121,7 @@ struct AST {
     private:
         void parse();
         
+       // void init_external_mem_objects();
         void list();
         void list_stmt(const std::shared_ptr<STMT>& stmt, int indent);
         void list_expr(const std::shared_ptr<EXPR>& expr, int indent);
@@ -114,6 +129,7 @@ struct AST {
         // -------------------- Expression Parsing --------------------
         std::shared_ptr<EXPR> parse_expression();
         std::shared_ptr<EXPR> parse_array_literal();
+        std::shared_ptr<EXPR> parse_enum_body();
         std::shared_ptr<EXPR> parse_array_access(std::shared_ptr<EXPR>node);
         std::shared_ptr<EXPR> parse_or();
         std::shared_ptr<EXPR> parse_and();
@@ -129,6 +145,7 @@ struct AST {
         std::shared_ptr<STMT> parse_assignment();
         std::shared_ptr<STMT> parse_if();
         std::shared_ptr<STMT> parse_while();
+        std::shared_ptr<STMT> parse_enum();
         std::vector<std::shared_ptr<STMT>> parse_block();
         std::shared_ptr<STMT>parse_list();
         std::shared_ptr<STMT>parse_block_stmt();
