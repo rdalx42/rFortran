@@ -1,3 +1,4 @@
+
 #include "ast.h"
 
 inline bool is_operator(const TOKEN& tok, const std::vector<std::string>& ops) {
@@ -134,11 +135,56 @@ std::shared_ptr<EXPR> AST::parse_array_literal(){
 
     if(idx>=tokens.size() || tokens[idx].value!="]"){
         throw_error("Expected ']' for array literal");
+        return nullptr;
     }
 
     idx++;
     return node;
 }
+
+std::shared_ptr<EXPR> AST::parse_enum_body() {
+    if (tokens[idx].type != TOKEN_TYPE::SPAREN || tokens[idx].value != "[") {
+        throw_error("Expected '[' token in enum content");
+    }
+
+    auto node = std::make_shared<EXPR>();
+    node->type = expression_type::ENUM_LITERAL;
+
+    idx++; // skip '['
+    bool expect_comma = false;
+
+    while (idx < tokens.size() && !(tokens[idx].type == TOKEN_TYPE::SPAREN && tokens[idx].value == "]")) {
+        const auto& tok = tokens[idx];
+
+        if (tok.type == TOKEN_TYPE::IDENTIFIER) {
+            if (expect_comma) {
+                throw_error("Expected ',' between enum identifiers");
+            }
+
+            node->enum_elements.push_back(tok.value);
+            idx++;
+            expect_comma = true;
+        }
+        else if (tok.type == TOKEN_TYPE::COMMA) {
+            if (!expect_comma) {
+                throw_error("Unexpected ',' in enum declaration");
+            }
+            idx++;
+            expect_comma = false;
+        }
+        else {
+            throw_error("Unexpected token in enum body: " + tok.value);
+        }
+    }
+
+    if (idx >= tokens.size() || tokens[idx].value != "]") {
+        throw_error("Expected ']' at the end of enum body");
+    }
+
+    idx++; // skip ']'
+    return node;
+}
+
 
 std::shared_ptr<EXPR> AST::parse_unary() {
     if(idx < tokens.size() && tokens[idx].type == TOKEN_TYPE::OPERATOR &&
@@ -169,6 +215,22 @@ std::shared_ptr<EXPR> AST::parse_factor() {
         node->type = expression_type::IDENTIFIER;
         node->name = tok.value;
         idx++;
+
+        if(idx<tokens.size() && tokens[idx].type == TOKEN_TYPE::ACCESS){
+            idx++;
+
+            if(idx>=tokens.size()||tokens[idx].type!=TOKEN_TYPE::IDENTIFIER){
+                throw_error("Expected enum value after '::'");
+            }
+
+            node = std::make_shared<EXPR>();
+            node->type = expression_type::ENUM_ACCESS;
+            node->enum_name = tok.value;
+            node->enum_value = tokens[idx].value;
+            idx++;
+            return node;
+        }
+
         if(idx<tokens.size()&&tokens[idx].type == TOKEN_TYPE::SPAREN && tokens[idx].value == "["){
             return parse_array_access(node);
         }
@@ -195,11 +257,12 @@ std::shared_ptr<STMT> AST::parse_statement() {
     const auto& tok = tokens[idx];
 
     if(tok.type == TOKEN_TYPE::KEYWORD) {
-        if(tok.value == "var") return parse_var();
+        if(tok.value == "var") {return parse_var();}
         else if(tok.value == "list") return parse_list();
         else if(tok.value == "if") return parse_if();
         else if(tok.value == "while") return parse_while();
         else if(tok.value == "do") return parse_block_stmt();
+        else if(tok.value == "enum") return parse_enum();
         else { idx++; return nullptr; }
     }
     else if(tok.type == TOKEN_TYPE::IDENTIFIER) {
@@ -278,6 +341,22 @@ std::shared_ptr<STMT> AST::parse_list() {
     return node;
 }
 
+std::shared_ptr<STMT> AST::parse_enum() {
+    idx++; 
+    auto node = std::make_shared<STMT>();
+    node->type = stmt_type::ENUM;
+
+    if (idx >= tokens.size() || tokens[idx].type != TOKEN_TYPE::IDENTIFIER) {
+        throw_error("Expected identifier after 'enum' declaration");
+    }
+    node->enum_name = tokens[idx].value;
+    idx++;
+
+    node->enum_body = parse_enum_body();
+
+    return node;
+}
+
 std::shared_ptr<STMT> AST::parse_if() {
     idx++;
     auto node = std::make_shared<STMT>();
@@ -333,43 +412,60 @@ std::vector<std::shared_ptr<STMT>> AST::parse_block() {
 }
 
 void AST::list_stmt(const std::shared_ptr<STMT>& stmt, int indent) {
-    if(!stmt) return;
+    if (!stmt) return;
     std::string pad(indent * 2, ' ');
 
-    switch(stmt->type) {
+    switch (stmt->type) {
         case stmt_type::VAR_DECL:
             std::cout << pad << "VarDecl: " << stmt->var_name << " = ";
             list_expr(stmt->init_expr, 0);
             std::cout << "\n";
             break;
+
         case stmt_type::ASSIGNMENT:
             std::cout << pad << "Assignment: " << stmt->var_name << " = ";
             list_expr(stmt->assign_expr, 0);
             std::cout << "\n";
             break;
+
         case stmt_type::LIST:
             std::cout << pad << "List: " << stmt->list_var_name << "\n";
             break;
+
         case stmt_type::IF:
             std::cout << pad << "If: ";
             list_expr(stmt->condition, 0);
             std::cout << "\n";
             std::cout << pad << "Then:\n";
-            for(const auto& s : stmt->then_block) list_stmt(s, indent + 1);
-            if(!stmt->else_block.empty()) {
+            for (const auto& s : stmt->then_block) list_stmt(s, indent + 1);
+            if (!stmt->else_block.empty()) {
                 std::cout << pad << "Else:\n";
-                for(const auto& s : stmt->else_block) list_stmt(s, indent + 1);
+                for (const auto& s : stmt->else_block) list_stmt(s, indent + 1);
             }
             break;
+
         case stmt_type::WHILE:
             std::cout << pad << "While: ";
             list_expr(stmt->condition, 0);
             std::cout << "\n";
-            for(const auto& s : stmt->then_block) list_stmt(s, indent + 1);
+            for (const auto& s : stmt->then_block) list_stmt(s, indent + 1);
             break;
+
         case stmt_type::BLOCK:
             std::cout << pad << "Block:\n";
-            for(const auto& s : stmt->then_block) list_stmt(s, indent + 1);
+            for (const auto& s : stmt->then_block) list_stmt(s, indent + 1);
+            break;
+
+        case stmt_type::ENUM:
+            std::cout << pad << "Enum: " << stmt->enum_name << " [";
+            if (stmt->enum_body) {
+                for (size_t i = 0; i < stmt->enum_body->enum_elements.size(); ++i) {
+                    std::cout << stmt->enum_body->enum_elements[i];
+                    if (i != stmt->enum_body->enum_elements.size() - 1)
+                        std::cout << ", ";
+                }
+            }
+            std::cout << "]\n";
             break;
     }
 }
@@ -411,6 +507,10 @@ void AST::list_expr(const std::shared_ptr<EXPR>& expr, int indent) {
             list_expr(expr->array_index, 0);
             std::cout << "])";
             break;
+        case expression_type::ENUM_ACCESS:
+            std::cout << pad << "EnumAccess(" << expr->enum_name << "::" << expr->enum_value << ")";
+            break;
+
         default:
             std::cout << pad << "UnknownExpr";
             break;
@@ -492,6 +592,14 @@ void AST::parse_scope_end(){
     this->scope_var_count.pop();
 
     for(auto it = this->var_codification.begin(); it != this->var_codification.end(); ){
+        
+        if(this->enum_value_to_enums.find(it->first) != this->enum_value_to_enums.end()){
+            
+            // this->enum_map.erase(this->enum_name_to_uint8[it->first]); // don't erase this since it'll later be translated
+            this->enum_name_to_uint8.erase(it->first);
+            this->enum_value_to_enums.erase(it->first);
+        }
+        
         if(it->second > vars_before_scope){
             it = this->var_codification.erase(it);
         } else {
@@ -599,6 +707,25 @@ void AST::codegen_expr(std::shared_ptr<EXPR>& expr){
                 // simply push number
                 this->bytecode+="PUSH " + expr->value + "\n";
             }
+
+            break;
+        }
+
+        case expression_type::ENUM_ACCESS:{
+
+            if(this->var_codification.find(expr->enum_name) == this->var_codification.end()){
+                throw_error("Invalid enum of name: " + expr->enum_name);
+            }
+
+            if(std::find(this->enum_value_to_enums[expr->enum_name].begin(),this->enum_value_to_enums[expr->enum_name].end(),expr->enum_value) == this->enum_value_to_enums[expr->enum_name].end()){
+                throw_error("Enum object: " + expr->enum_value + " doesn't exist in: " + expr->enum_name + " enum");
+            }
+
+            uint16_t enum_index = std::distance(this->enum_value_to_enums[expr->enum_name].begin(), std::find(this->enum_value_to_enums[expr->enum_name].begin(),this->enum_value_to_enums[expr->enum_name].end(),expr->enum_value));
+            // also have to add enum id from where it comes 
+
+            this->bytecode+="PUSH "+std::to_string(this->enum_name_to_uint8[expr->enum_name])+"\n";
+            this->bytecode+="PUSH_ENUM_VALUE " + std::to_string(enum_index) + "\n";
 
             break;
         }
@@ -768,9 +895,41 @@ void AST::codegen(std::shared_ptr<STMT>&stmt){
             break;
         }
 
+        case stmt_type::ENUM: {
+            const std::string& enum_name = stmt->enum_name;
+
+            if(var_codification.find(enum_name) != var_codification.end()){
+                throw_error("Enum already declared: " + enum_name);
+            }
+
+            uint16_t var_code = var_codification.size();
+            var_codification[enum_name] = var_code;
+
+            this->variables_in_declaration_proccess[enum_name] = true;
+
+            // assign a new enum ID
+            int enum_id = this->enum_map.size()+1;
+            std::cout<<">>"<<enum_id<<"\n";
+            this->enum_map[enum_id] = {};
+            this->enum_name_to_uint8[enum_name] = enum_id;
+
+            // now push enum values
+            auto& values = this->enum_map[enum_id];
+            for(int i = 0; i < stmt->enum_body->enum_elements.size(); ++i){
+                this->enum_value_to_enums[enum_name].push_back(stmt->enum_body->enum_elements[i]);
+                this->bytecode += "PUSH " + std::to_string(enum_id) + "\n";
+                this->bytecode += "STORE_ENUM_VALUE " + std::to_string(i) + "\n";
+                this->enum_map[enum_id].push_back(i);
+             //   std::cout<<this->enum_map[enum_id].back()<<"!<>\n";
+            }
+
+            this->variables_in_declaration_proccess.erase(enum_name);
+
+            break;
+        }
+
         case stmt_type::ASSIGNMENT:{
             
-
             if(!stmt->array_assign_expr){
 
                 const std::string& var_name = stmt->var_name;
@@ -912,3 +1071,4 @@ void AST::init_codegen(){
 void AST::list_bytecode(){
     std::cout<<this->bytecode;
 }
+
