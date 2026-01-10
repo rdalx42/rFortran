@@ -20,6 +20,7 @@ The main goal for this project is to replicate what modern fortran would look li
 # Notices
  - Concat can only concat strings, not variables which hold strings, concat operations can't be nested: "y" concat "x" concat "z"
  - Arrays can't initialized as empty, there are 256 array slots available, each array having 256 value slots.
+ - There are 20 valid enum slots, each enum can have at most 20 elements in it
 
 ```pascal 
 program main
@@ -294,6 +295,7 @@ g++  runtime/*.cpp lexer/*.cpp compiler/*.cpp parser/*.cpp -Iinclude -o b
 g++ runtime/*.cpp lexer/*.cpp compiler/*.cpp parser/*.cpp -Iinclude -O3 -Ofast -funroll-loops -ffast-math -march=native -flto -fomit-frame-pointer -o b
 ./b # by default, main.rf will be executed
 ```
+
 
 
 
