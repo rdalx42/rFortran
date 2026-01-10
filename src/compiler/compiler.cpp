@@ -33,10 +33,7 @@ void COMPILER::init_content() {
                 if (i < 2) {
                     throw_error("Not enough operands for AND/OR at init_content");
                 }
-                const BTOKEN& rhs = bytecode[i - 1];
-                const BTOKEN& lhs = bytecode[i - 2];
-
-                
+              
                 break;
             }
 
@@ -79,10 +76,13 @@ void COMPILER::run() {
             case BTOKEN_TYPE::PUSH: {
                 registers.registers[0].value_type = VALUE_TYPE::NUMBER;
                 registers.registers[0].data.number_value = token.data.number_value;
+              //  std::cout<<registers.registers[0].data.number_value<<"p\n";
                 memory.st.push(registers.registers[0]);
+                
                 ip++;
                 break;
             }
+
 
             // ----------------------------------
             // LIST TOP from memory stack 
@@ -167,6 +167,34 @@ void COMPILER::run() {
                 ip++;
                 break;
             }
+
+            // ----------------------------------
+            // Enum operations
+            // ----------------------------------
+
+            case BTOKEN_TYPE::STORE_ENUM_VALUE:{
+                
+                registers.registers[0]=memory.st.pop_ret(); // we know by default the type of it
+                //std::cout<<(int)registers.registers[0].data.number_value<<"\n";
+                //std::cout<<"ip "<<ip<<"\n";
+                registers.registers[1].value_type=VALUE_TYPE::ENUM_OBJECT;
+                registers.registers[1].data.enum_data.value_id=(int)token.data.number_value;
+                registers.registers[1].data.enum_data.type_id=(int)registers.registers[0].data.number_value;
+                //std::cout<<"pos->" <<(int)registers.registers[0].data.number_value<<" val-> "<<(int)token.data.number_value<<"\n";
+                memory.enum_memory[(int)registers.registers[0].data.number_value][(int)token.data.number_value] = registers.registers[1];
+                ip++;
+                break;
+            }
+
+            case BTOKEN_TYPE::PUSH_ENUM_VALUE:{
+                registers.registers[0]=memory.st.pop_ret(); // get enum id 
+                registers.registers[1].value_type=VALUE_TYPE::ENUM_OBJECT;
+                registers.registers[1].data.enum_data.value_id=(int)token.data.number_value;
+                registers.registers[1].data.enum_data.type_id=(int)registers.registers[0].data.number_value;
+                memory.st.push(registers.registers[1]);
+                ip++;
+                break;
+            }
         
             // ----------------------------------
             // Binary operator: pop 2, compute, push
@@ -235,6 +263,24 @@ void COMPILER::run() {
                                     break;
                             }
                         }
+
+                        // enums : only (!= and ==)
+                        else if(lhs.value_type == VALUE_TYPE::ENUM_OBJECT && rhs.value_type == VALUE_TYPE::ENUM_OBJECT) {
+                            // Both must be same enum type
+                            if(lhs.data.enum_data.type_id != rhs.data.enum_data.type_id) {
+                                throw_error("Cannot compare enums of different types");
+                            }
+
+                            switch(token.data.char_value) {
+                                case '=': lhs.data.number_value = (lhs.data.enum_data.value_id == rhs.data.enum_data.value_id); break;
+                                case '~': lhs.data.number_value = (lhs.data.enum_data.value_id != rhs.data.enum_data.value_id); break;
+                                default:
+                                    throw_error("Invalid enum comparison, only '==' and '!=' allowed!");
+                            }
+                            
+                            lhs.value_type = VALUE_TYPE::NUMBER; // result is always number
+                        }
+
                       
 
                         lhs.value_type = VALUE_TYPE::NUMBER; // result is always number
