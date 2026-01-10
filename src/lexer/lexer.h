@@ -20,6 +20,7 @@ enum TOKEN_TYPE{
     CPAREN,
     SPAREN,
     COMMA,
+    ACCESS,
     NONE
 };
 
@@ -37,10 +38,21 @@ enum class BTOKEN_TYPE: uint8_t {
     LABEL,
     AND,
     OR,
+
     SET_ARRAY_AT, // array_name, sets array at index
     LOAD_ARRAY_AT, // array_name, pushes array at index
     LOAD_ARRAY, // array_name, loads array
+    STORE_ENUM_VALUE,  // stores enum value [id, value],id will be stack top
+    PUSH_ENUM_VALUE, // pushes enum value [id,value], id will be stack top
 };
+
+/*
+
+enum logic:
+for i,each enum in enums
+    for j,each enumobj in enum 
+        store enum value [i - enum id coresp, j - enum obj id coresp]
+*/
 
 struct TOKEN{
     TOKEN_TYPE type;
@@ -66,9 +78,9 @@ struct BTOKEN {
 
 
 const std::string skippables = " \n\t\r";
-const std::vector<std::string>keywords = {"if","else","while","impl","var","end","else","program","do","list","concat","and","or"};
-const std::vector<std::string>bytecode_keywords = {"PUSH","LOAD","STORE","OP","NEG","NOT","LIST","LOADSTRING","GOTO","GOTO_IF_FALSE","LABEL","AND","OR","LOAD_ARRAY","SET_ARRAY_AT","LOAD_ARRAY_AT"};
-const std::vector<std::string>expects_number_bytecode_keywords = {"PUSH","LOAD","STORE","LIST","LOADSTRING","GOTO","GOTO_IF_FALSE","LABEL","LOAD_ARRAY","SET_ARRAY_AT","LOAD_ARRAY_AT"};
+const std::vector<std::string>keywords = {"if","else","while","impl","var","end","else","program","do","list","concat","and","or","enum"};
+const std::vector<std::string>bytecode_keywords = {"PUSH","LOAD","STORE","OP","NEG","NOT","LIST","LOADSTRING","GOTO","GOTO_IF_FALSE","LABEL","AND","OR","LOAD_ARRAY","SET_ARRAY_AT","LOAD_ARRAY_AT","STORE_ENUM_VALUE","PUSH_ENUM_VALUE"};
+const std::vector<std::string>expects_number_bytecode_keywords = {"PUSH","LOAD","STORE","LIST","LOADSTRING","GOTO","GOTO_IF_FALSE","LABEL","LOAD_ARRAY","SET_ARRAY_AT","LOAD_ARRAY_AT","STORE_ENUM_VALUE","PUSH_ENUM_VALUE"};
 const std::vector<std::string>expects_char_bytecode_keywords = {"OP"};
 
 struct LEXER{
@@ -89,7 +101,8 @@ struct LEXER{
         void lex_identifier();
         inline bool is_keyword(const std::string& val) const;  
         inline bool is_bytecode_keyword(const std::string& val) const;
-        inline bool expects_number(const std::string& val) const;   
+        inline bool expects_number(const std::string& val) const;  
+        inline bool expects_2number(const std::string& val) const; 
         inline bool expects_character(const std::string& val) const;
         double find_number();
         void lex(); 
@@ -119,6 +132,8 @@ struct LEXER{
                     return "COMMA";
                 case TOKEN_TYPE::KEYWORD:
                     return "KEYWORD";
+                case TOKEN_TYPE::ACCESS:
+                    return "ACCESS";
                 default:
                     return "UNKNOWN";
             }
@@ -157,6 +172,10 @@ struct LEXER{
                 return BTOKEN_TYPE::GOTO_IF_FALSE;
             }else if(type == "LABEL"){
                 return BTOKEN_TYPE::LABEL;
+            }else if(type == "STORE_ENUM_VALUE"){
+                return BTOKEN_TYPE::STORE_ENUM_VALUE;
+            }else if(type == "PUSH_ENUM_VALUE"){
+                return BTOKEN_TYPE::PUSH_ENUM_VALUE;
             }
             else{
                 throw std::runtime_error("Unknown bytecode token type: " + type);
@@ -181,6 +200,10 @@ struct LEXER{
                     return "LIST";
                 case BTOKEN_TYPE::LOADSTRING:
                     return "LOADSTRING";
+                case BTOKEN_TYPE::STORE_ENUM_VALUE:
+                    return "STORE_ENUM_VALUE";
+                case BTOKEN_TYPE::PUSH_ENUM_VALUE:
+                    return "PUSH_ENUM_VALUE";
                 case BTOKEN_TYPE::GOTO:
                     return "GOTO";
                 case BTOKEN_TYPE::LOAD_ARRAY:
