@@ -1,5 +1,6 @@
 #include "../lexer/lexer.h"
 #include "../error/error.h"
+#include "../runtime/stl/stl.h"
 #include "../runtime/memory/hasher.h"
 #include <unordered_map>
 #include <stack>
@@ -21,6 +22,7 @@ enum class expression_type : uint8_t {
     ARRAY_LITERAL,
     ARRAY_ACCESS,
     ENUM_LITERAL,
+    FUNCTION_CALL,
     ENUM_ACCESS,
 };
 
@@ -48,6 +50,10 @@ struct EXPR {
     std::vector<std::shared_ptr<EXPR>> array_elements; // for [a, b, c]
     std::shared_ptr<EXPR> array_index;                 // for arr[i]
     std::string array_name;                         // variable holding the array
+
+    // --- FUNCTION CALL SUPPORT ---
+    std::string function_name;
+    std::vector<std::shared_ptr<EXPR>> arguments;
 };
 
 // -------------------- Statements --------------------
@@ -59,6 +65,7 @@ enum class stmt_type : uint8_t {
     WHILE,      // while loop
     BLOCK,       // scope block
     ENUM,
+    EXPR_STMT,   // expression statement (e.g. function call without assignment)
 };
 
 struct STMT {
@@ -66,6 +73,7 @@ struct STMT {
 
     std::string var_name;                 // var decl or assignment
     std::shared_ptr<EXPR>array_assign_expr; // array assignment expression x[expr]
+    //std::shared_ptr<EXPR>assign_function_expr;
     std::shared_ptr<EXPR> init_expr;      // var initializer
     std::shared_ptr<EXPR> assign_expr;    // assignment expression
     std::string list_var_name;            // list statement variable
@@ -80,6 +88,8 @@ struct STMT {
 };
 
 struct AST {
+
+    STL standardlib;
     
     std::string program_name;
     std::vector<std::shared_ptr<STMT>> statements; // top-level statements
@@ -91,7 +101,9 @@ struct AST {
     std::string bytecode="";
     std::string prog_name="";
     std::stack<short int>scope_var_count;
+    
     std::unordered_map<std::string,unsigned short int>var_codification;
+   
     std::unordered_map<std::string,uint8_t>array_codification;
     std::unordered_map<std::string,bool>variables_in_declaration_proccess;  /* 
     the reason why we do this is simple, array evaluation needs direct variable name but we don't register the var name
@@ -153,10 +165,10 @@ struct AST {
         // -------------------- Post Parsing ---------------------
 
         void check_array_rules();
+        void check_function_call_rules(const std::vector<std::shared_ptr<EXPR>>& exprs);
         void check_stmt_array_rules(const std::shared_ptr<STMT>& stmt, bool in_assignment_or_var, const std::string& current_var);
         void check_expr_array_rules(const std::shared_ptr<EXPR>& expr, bool in_assignment_or_var, const std::string& current_var);
-
-
+        
         // -------------------- Scope Helpers --------------------
         
         void parse_scope_start();
