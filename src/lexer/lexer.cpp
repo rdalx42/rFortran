@@ -306,6 +306,7 @@ void LEXER::listb(){
 
     std::ios::sync_with_stdio(false);
     int I=0;
+    std::cout<<"\n\n";
 
     for(const auto& btoken : this->btokens){
         std::cout << "{Type: " << this->bytecode_token_type_to_string(btoken.token_type) ;
