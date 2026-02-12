@@ -38,6 +38,10 @@ enum class BTOKEN_TYPE: uint8_t {
     LABEL,
     AND,
     OR,
+    
+    PUSH_PARAM, // Pushes a paramater onto a static array based stack, unlick push, it doesn't use registers
+    CALL_BUILTIN, // builtin id
+    STANDALONE_CALL_BUILTIN, // builtin id, pushses no value.
 
     SET_ARRAY_AT, // array_name, sets array at index
     LOAD_ARRAY_AT, // array_name, pushes array at index
@@ -78,9 +82,9 @@ struct BTOKEN {
 
 
 const std::string skippables = " \n\t\r";
-const std::vector<std::string>keywords = {"if","else","while","impl","var","end","else","program","do","list","concat","and","or","enum"};
-const std::vector<std::string>bytecode_keywords = {"PUSH","LOAD","STORE","OP","NEG","NOT","LIST","LOADSTRING","GOTO","GOTO_IF_FALSE","LABEL","AND","OR","LOAD_ARRAY","SET_ARRAY_AT","LOAD_ARRAY_AT","STORE_ENUM_VALUE","PUSH_ENUM_VALUE"};
-const std::vector<std::string>expects_number_bytecode_keywords = {"PUSH","LOAD","STORE","LIST","LOADSTRING","GOTO","GOTO_IF_FALSE","LABEL","LOAD_ARRAY","SET_ARRAY_AT","LOAD_ARRAY_AT","STORE_ENUM_VALUE","PUSH_ENUM_VALUE"};
+const std::vector<std::string>keywords = {"if","else","while","impl","var","end","else","program","do",/*"list"*/"concat","and","or","enum"};
+const std::vector<std::string>bytecode_keywords = {"PUSH","LOAD","STORE","OP","NEG","NOT","LIST","LOADSTRING","GOTO","GOTO_IF_FALSE","LABEL","AND","OR","LOAD_ARRAY","SET_ARRAY_AT","LOAD_ARRAY_AT","STORE_ENUM_VALUE","PUSH_ENUM_VALUE","PUSH_PARAM","CALL_BUILTIN","STANDALONE_CALL_BUILTIN"};
+const std::vector<std::string>expects_number_bytecode_keywords = {"PUSH","LOAD","STORE","LIST","LOADSTRING","GOTO","GOTO_IF_FALSE","LABEL","LOAD_ARRAY","SET_ARRAY_AT","LOAD_ARRAY_AT","STORE_ENUM_VALUE","PUSH_ENUM_VALUE","CALL_BUILTIN","STANDALONE_CALL_BUILTIN"};
 const std::vector<std::string>expects_char_bytecode_keywords = {"OP"};
 
 struct LEXER{
@@ -146,8 +150,14 @@ struct LEXER{
                 return BTOKEN_TYPE::LOAD;
             }else if(type == "STORE"){
                 return BTOKEN_TYPE::STORE;
+            }else if(type == "CALL_BUILTIN"){
+                return BTOKEN_TYPE::CALL_BUILTIN;
+            }else if(type == "STANDALONE_CALL_BUILTIN"){
+                return BTOKEN_TYPE::STANDALONE_CALL_BUILTIN;
             }else if(type == "AND"){
                 return BTOKEN_TYPE::AND;
+            }else if(type == "PUSH_PARAM"){
+                return BTOKEN_TYPE::PUSH_PARAM;
             }else if(type == "OR"){
                 return BTOKEN_TYPE::OR;
             }else if(type == "LOAD_ARRAY"){
@@ -192,6 +202,10 @@ struct LEXER{
                     return "STORE";
                 case BTOKEN_TYPE::OP:
                     return "OP";
+                case BTOKEN_TYPE::CALL_BUILTIN:
+                    return "CALL_BUILTIN";
+                case BTOKEN_TYPE::STANDALONE_CALL_BUILTIN:
+                    return "STANDALONE_CALL_BUILTIN";
                 case BTOKEN_TYPE::NEG:
                     return "NEG";
                 case BTOKEN_TYPE::NOT:
@@ -220,6 +234,8 @@ struct LEXER{
                     return "AND";
                 case BTOKEN_TYPE::OR:
                     return "OR";
+                case BTOKEN_TYPE::PUSH_PARAM:
+                    return "PUSH_PARAM";
                 default:
                     return "UNKNOWN";
             }
