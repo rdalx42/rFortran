@@ -231,6 +231,41 @@ std::shared_ptr<EXPR> AST::parse_factor() {
             return node;
         }
 
+        if (idx < tokens.size() && tokens[idx].type == TOKEN_TYPE::PAREN && tokens[idx].value == "("){
+            auto call = std::make_shared<EXPR>();
+            call->type = expression_type::FUNCTION_CALL;
+            call->function_name = node->name;
+
+            idx++; 
+            if (idx < tokens.size() && tokens[idx].value != ")"){
+                while (true){
+                    call->arguments.push_back(parse_expression());
+
+                    if (idx >= tokens.size()){
+                        throw_error("Unterminated function call");
+                    }
+                    if (tokens[idx].value == ")"){
+                        break;
+                    }
+                    if (tokens[idx].value != ","){
+                        throw_error("Expected ',' between function call arguments");
+                    }
+                    idx++; 
+                }
+            }
+
+            if(call->arguments.size()>40){
+                throw_error("Too many arguments in function call, max is 40");
+            }
+
+            if (idx >= tokens.size() || tokens[idx].value != ")")
+                throw_error("Expected ')' after function arguments");
+
+            idx++; 
+
+            return call;
+        }
+
         if(idx<tokens.size()&&tokens[idx].type == TOKEN_TYPE::SPAREN && tokens[idx].value == "["){
             return parse_array_access(node);
         }
@@ -269,6 +304,13 @@ std::shared_ptr<STMT> AST::parse_statement() {
         
         auto lhs_expr = parse_factor(); 
 
+        if(lhs_expr->type == expression_type::FUNCTION_CALL) {
+            auto node = std::make_shared<STMT>();
+            node->type = stmt_type::EXPR_STMT;
+            node->init_expr = lhs_expr;
+            return node;
+        }
+
         if(idx < tokens.size() && tokens[idx].type == TOKEN_TYPE::OPERATOR && tokens[idx].value == "=") {
             idx++; 
             auto rhs_expr = parse_expression();
@@ -282,7 +324,8 @@ std::shared_ptr<STMT> AST::parse_statement() {
                 node->var_name = lhs_expr->name;
             } else if(lhs_expr->type == expression_type::ARRAY_ACCESS) {
                 node->array_assign_expr = lhs_expr; 
-            } else {
+            } 
+             else {
                 throw_error("Invalid LHS in assignment");
             }
 
@@ -416,6 +459,11 @@ void AST::list_stmt(const std::shared_ptr<STMT>& stmt, int indent) {
     std::string pad(indent * 2, ' ');
 
     switch (stmt->type) {
+        case stmt_type::EXPR_STMT:
+           
+            list_expr(stmt->init_expr, indent);
+            std::cout<<"\n";
+            break;
         case stmt_type::VAR_DECL:
             std::cout << pad << "VarDecl: " << stmt->var_name << " = ";
             list_expr(stmt->init_expr, 0);
@@ -481,6 +529,15 @@ void AST::list_expr(const std::shared_ptr<EXPR>& expr, int indent) {
         case expression_type::IDENTIFIER:
             std::cout << pad << "Identifier(" << expr->name << ")";
             break;
+        case expression_type::FUNCTION_CALL:
+            std::cout << pad << "FunctionCall(" << expr->function_name << "(";
+            for(size_t i = 0; i < expr->arguments.size(); ++i) {
+                list_expr(expr->arguments[i], 0);
+                if(i != expr->arguments.size() - 1)
+                    std::cout << ", ";
+            }
+            std::cout << "))";
+            break;
         case expression_type::UNARY:
             std::cout << pad << "Unary(" << expr->unary_op << " ";
             list_expr(expr->unary_expr, 0);
@@ -515,6 +572,7 @@ void AST::list_expr(const std::shared_ptr<EXPR>& expr, int indent) {
             std::cout << pad << "UnknownExpr";
             break;
     }
+    
 }
 
 void AST::list() {
@@ -523,6 +581,49 @@ void AST::list() {
         list_stmt(stmt, 0);
     }
 }
+
+void AST::check_function_call_rules(const std::vector<std::shared_ptr<EXPR>>& exprs){
+    std::vector<std::shared_ptr<EXPR>> stack;
+
+    for (auto& e : exprs) {
+        if (e) stack.push_back(e);
+    }
+
+    while (!stack.empty()) {
+        auto expr = stack.back();
+        stack.pop_back();
+
+        if (!expr) continue;
+
+        if (expr->type == expression_type::FUNCTION_CALL) {
+            throw_error("Nested function calls aren't allowed");
+        }
+
+        switch (expr->type) {
+            case expression_type::UNARY:
+                stack.push_back(expr->unary_expr);
+                break;
+
+            case expression_type::BINARY:
+                stack.push_back(expr->left);
+                stack.push_back(expr->right);
+                break;
+
+            case expression_type::ARRAY_LITERAL:
+                for (auto& el : expr->array_elements)
+                    stack.push_back(el);
+                break;
+
+            case expression_type::ARRAY_ACCESS:
+                stack.push_back(expr->array_index);
+                break;
+
+            default:
+                break;
+        }
+    }
+}
+
 
 // -------------------- Parse top-level --------------------
 void AST::parse() {
@@ -570,7 +671,7 @@ void AST::parse() {
         if(stmt) statements.push_back(stmt);
     }
 
-   
+    std::cout<<"\n\n";
 }
 
 // CODEGEN 
@@ -593,9 +694,8 @@ void AST::parse_scope_end(){
 
     for(auto it = this->var_codification.begin(); it != this->var_codification.end(); ){
         
-        if(this->enum_value_to_enums.find(it->first) != this->enum_value_to_enums.end()){
+        if(it->second>vars_before_scope && this->enum_value_to_enums.find(it->first) != this->enum_value_to_enums.end()){
             
-            // this->enum_map.erase(this->enum_name_to_uint8[it->first]); // don't erase this since it'll later be translated
             this->enum_name_to_uint8.erase(it->first);
             this->enum_value_to_enums.erase(it->first);
         }
@@ -614,7 +714,6 @@ void AST::check_array_rules() {
     }
 }
 
-
 void AST::check_stmt_array_rules(const std::shared_ptr<STMT>& stmt, bool in_assignment_or_var, const std::string& current_var) {
     if (!stmt) return;
 
@@ -622,6 +721,9 @@ void AST::check_stmt_array_rules(const std::shared_ptr<STMT>& stmt, bool in_assi
         case stmt_type::VAR_DECL:
            
             check_expr_array_rules(stmt->init_expr, true, stmt->var_name);
+            break;
+        case stmt_type::EXPR_STMT:
+            check_expr_array_rules(stmt->init_expr, false, "");
             break;
         case stmt_type::ASSIGNMENT:
            
@@ -648,6 +750,7 @@ void AST::check_expr_array_rules(const std::shared_ptr<EXPR>& expr, bool in_assi
     if (!expr) return;
 
     switch (expr->type) {
+        
         case expression_type::ARRAY_LITERAL:
             if (!in_assignment_or_var) {
                 throw_error("Array literals are only allowed in variable declarations or assignments");
@@ -663,6 +766,7 @@ void AST::check_expr_array_rules(const std::shared_ptr<EXPR>& expr, bool in_assi
                 if (el->type == expression_type::ARRAY_LITERAL) {
                     throw_error("Nested array literals are not allowed");
                 }
+               
                 check_expr_array_rules(el, true, current_var); 
             }
             break;
@@ -813,6 +917,31 @@ void AST::codegen_expr(std::shared_ptr<EXPR>& expr){
             break;
         }
 
+        case expression_type::FUNCTION_CALL: {
+            check_function_call_rules(expr->arguments);
+            const std::string& var_name = expr->function_name;
+            
+            if(this->var_codification.find(var_name) == this->var_codification.end() && std::find(this->standardlib.valid_function_names.begin(), this->standardlib.valid_function_names.end(), var_name) == this->standardlib.valid_function_names.end()){
+                throw_error("Invalid function of name: " + var_name);
+                break;
+            }
+            
+            bool is_builtin = this->var_codification.find(var_name) == this->var_codification.end();
+
+            for(auto& arg : expr->arguments){
+                this->codegen_expr(arg);
+                this->bytecode+="PUSH_PARAM\n";
+            }
+
+            if(is_builtin){
+                auto call_index = std::distance(this->standardlib.valid_function_names.begin(), std::find(this->standardlib.valid_function_names.begin(), this->standardlib.valid_function_names.end(), var_name));
+                this->bytecode+="CALL_BUILTIN " +  std::to_string(call_index) + "\n";
+            }else{
+                throw_error("User-defined functions are not supported in this version");
+            }
+
+            break;
+        }
 
         case expression_type::BINARY:{
 
@@ -892,6 +1021,41 @@ void AST::codegen(std::shared_ptr<STMT>&stmt){
             this->var_codification[var_name] = var_code;
             this->bytecode += "STORE " + std::to_string(var_code) + "\n";
             
+            break;
+        }
+
+        case stmt_type::EXPR_STMT:{
+            if(stmt->init_expr->type == expression_type::FUNCTION_CALL){
+                std::cout<<"standalone function call : "<<stmt->init_expr->function_name<<"\n"; // if a function is standalone don't push it onto the call stack, wrap it inside of a s_builtin, or s_call bytecode token.
+
+                const auto & expr = stmt->init_expr;
+                check_function_call_rules(expr->arguments);
+                const std::string& var_name = expr->function_name;
+
+                
+                
+                if(this->var_codification.find(var_name) == this->var_codification.end() && std::find(this->standardlib.valid_function_names.begin(), this->standardlib.valid_function_names.end(), var_name) == this->standardlib.valid_function_names.end()){
+                    throw_error("Invalid function of name: " + var_name);
+                    break;
+                }
+                
+                bool is_builtin = this->var_codification.find(var_name) == this->var_codification.end();
+
+                for(auto& arg : expr->arguments){
+                    this->codegen_expr(arg);
+                    this->bytecode+="PUSH_PARAM\n";
+                }
+
+                if(is_builtin){
+                    auto call_index = std::distance(this->standardlib.valid_function_names.begin(), std::find(this->standardlib.valid_function_names.begin(), this->standardlib.valid_function_names.end(), var_name));
+                    this->bytecode+="STANDALONE_CALL_BUILTIN " +  std::to_string(call_index) + "\n";
+                }else{
+                    throw_error("User-defined functions are not supported in this version");
+                }
+
+                break;  
+            }
+            this->codegen_expr(stmt->init_expr);
             break;
         }
 
