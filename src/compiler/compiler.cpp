@@ -2,6 +2,10 @@
 #include "../lexer/lexer.h"
 #include "../error/error.h"
 
+/*
+push param just removes the first value from the register and pushses it into the static array based param stack
+ */
+
 void COMPILER::init_content() {
     // Iterate all bytecode tokens
     for (size_t i = 0; i < bytecode.size(); i++) {
@@ -422,6 +426,31 @@ void COMPILER::run() {
                 break;
             }
 
+            case BTOKEN_TYPE::PUSH_PARAM:
+                // std::cout<<"PUSH\n";
+              //  memory.st.list_top();
+                memory.param_stack.push(memory.st.pop_ret());
+                // std::cout<<memory.param_stack.psp<<"\n";
+                
+                ip++;
+                break;
+            
+            case BTOKEN_TYPE::CALL_BUILTIN:{
+                // std::cout<<memory.param_stack.psp<<"c\n";
+                uint16_t builtin_id = token.data.number_value;
+                this->standard.builtins[builtin_id](false);
+                ip++;
+                break;
+            }
+
+            case BTOKEN_TYPE::STANDALONE_CALL_BUILTIN:{
+                // std::cout<<memory.param_stack.psp<<"c\n";
+                uint16_t builtin_id = token.data.number_value;
+                this->standard.builtins[builtin_id](true);
+                ip++;
+                break;
+            }   
+
             case BTOKEN_TYPE::LABEL:{
                 ip++;
                 break;
@@ -441,6 +470,6 @@ void COMPILER::run() {
     auto end = std::chrono::high_resolution_clock::now();
     
     std::chrono::duration<double, std::milli> duration_ms = end - start;
-    std::cout << "Execution time: " << duration_ms.count() << " ms\n";
+   // std::cout << "Execution time: " << duration_ms.count() << " ms\n";
     
 }
