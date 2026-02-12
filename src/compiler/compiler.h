@@ -3,6 +3,7 @@
 #define COMPILER_H
 
 #include "../lexer/lexer.h"
+#include "../runtime/stl/stl.h"
 #include "../runtime/memory/memory.h"
 #include <chrono>
 
@@ -19,11 +20,13 @@ struct COMPILER{
     MEMORY memory;
     std::vector<BTOKEN>bytecode;
     uint16_t ip=0;
+    STL standard;
 
     public:
         void init(const std::vector<BTOKEN>& ibytecode){
             this->bytecode=ibytecode;
             this->init_content();
+            this->standard.init(this);
             this->run();
         }
     private:
