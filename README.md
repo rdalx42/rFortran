@@ -1,6 +1,12 @@
 
 # rF - RD fortran 
 
+<br>
+
+> You don't need a Garbage Collector, everything is pre allocated :3
+
+<br>
+
 This is a mini fortran clone I'm updating, it compiles to it's own bytecode.
 The main goal for this project is to replicate what modern fortran would look like while also making it memory lightweight, with string pooling included!
 
@@ -15,19 +21,50 @@ The main goal for this project is to replicate what modern fortran would look li
  - Fast variables, where a variable either holds a value to its number value or an index which points to the string pool.
  - Arrays!
  - Enums!
+ - Standard Lib!
 
 
 # Notices
  - Concat can only concat strings, not variables which hold strings, concat operations can't be nested: "y" concat "x" concat "z"
  - Arrays can't initialized as empty, there are 256 array slots available, each array having 256 value slots.
  - There are 20 valid enum slots, each enum can have at most 20 elements in it
+ - Nested function calls aren't allowed; e.g f(x(2+2))
 
 ```pascal 
-program main
 
-var a = 5
-var b = 10
-var c = 0
+program main 
+
+enum cargo [
+  BIG,
+  SMALL,
+  MINI,
+  MEDIUM
+]
+
+var Delta = [Time()]
+var i = 0 
+
+while i < 1000000 do 
+    i=i+1
+end
+
+List(Delta)
+
+Delta[1]=Time()
+
+List("Runtime: ",Delta[1]-Delta[0],"ms")
+List("delta array : " , Delta)
+
+var rand_number = RandRange(1,500)
+List("rand: ",rand_number)
+
+
+var cargo1 = cargo::SMALL
+var cargo2 = Delta
+var cargo3 = cargo::BIG
+List(cargo1, "  " , cargo3)
+
+var c = 0 
 
 if 1==1 or 1!=1 do
     if 5 and 5+5==10 do
@@ -38,168 +75,16 @@ if 1==1 or 1!=1 do
 else 
     c = -1
 end
+List(c)
 
-list c
+end program 
 
-var x = 1
-var string = "hello, world"
-var string2 = string
-var string3 = "bye" concat " world!"
-
-list string 
-list string2
-list string3
-
-do 
-    var z = -3.5+x 
-    list z
-end
-
-list x
-
-var t = 1000000
-
-a=0
-while a < t do 
-    a=a+1
-   
-end 
-
-b = [0]
-var i = 0 
-
-while i < 256 do 
-    if i < 100 do 
-        b[i]=i
-    else 
-        b[i] = "hello" concat ", bye!"
-    end 
-    i=i+1
-end
-
-list b 
-
-enum cargo [
-  BIG,
-  SMALL,
-  MINI,
-  MEDIUM
-]
-
-var cargo1 = cargo::SMALL
-var cargo2 = cargo::BIG
-var cargo3 = cargo::BIG
-
-if cargo1 == cargo2 or cargo3==cargo2 do
-    list cargo1
-end
-
-end program
 
 ```
 
 # Bytecode
 
 ```
-PUSH 5
-STORE 0
-PUSH 10
-STORE 1
-PUSH 0
-STORE 2
-PUSH 1
-PUSH 1
-OP =
-PUSH 1
-PUSH 1
-OP ~
-OR
-GOTO_IF_FALSE 1
-PUSH 5
-PUSH 5
-PUSH 5
-OP +
-PUSH 10
-OP =
-AND
-GOTO_IF_FALSE 3
-PUSH 100
-STORE 2
-GOTO 2
-LABEL 3
-PUSH 50
-STORE 2
-LABEL 2
-GOTO 0
-LABEL 1
-PUSH 1
-NEG
-STORE 2
-LABEL 0
-LIST 2
-PUSH 1
-STORE 3
-LOADSTRING 0
-STORE 4
-LOAD 4
-STORE 5
-LOADSTRING 1
-STORE 6
-LIST 4
-LIST 5
-LIST 6
-PUSH 3.5
-NEG
-LOAD 3
-OP +
-STORE 7
-LIST 7
-LIST 3
-PUSH 1000000
-STORE 7
-PUSH 0
-STORE 0
-LABEL 4
-LOAD 0
-LOAD 7
-OP <
-GOTO_IF_FALSE 5
-LOAD 0
-PUSH 1
-OP +
-STORE 0
-GOTO 4
-LABEL 5
-PUSH 0
-LOAD_ARRAY 0
-STORE 1
-PUSH 0
-STORE 8
-LABEL 6
-LOAD 8
-PUSH 256
-OP <
-GOTO_IF_FALSE 7
-LOAD 8
-PUSH 100
-OP <
-GOTO_IF_FALSE 9
-LOAD 8
-LOAD 8
-SET_ARRAY_AT 0
-GOTO 8
-LABEL 9
-LOADSTRING 2
-LOAD 8
-SET_ARRAY_AT 0
-LABEL 8
-LOAD 8
-PUSH 1
-OP +
-STORE 8
-GOTO 6
-LABEL 7
-LIST 1
 PUSH 1
 STORE_ENUM_VALUE 0
 PUSH 1
@@ -208,41 +93,115 @@ PUSH 1
 STORE_ENUM_VALUE 2
 PUSH 1
 STORE_ENUM_VALUE 3
+CALL_BUILTIN 1
+LOAD_ARRAY 0
+STORE 1
+PUSH 0
+STORE 2
+LABEL 0
+LOAD 2
+PUSH 1000000
+OP <
+GOTO_IF_FALSE 1
+LOAD 2
+PUSH 1
+OP +
+STORE 2
+GOTO 0
+LABEL 1
+LOAD 1
+PUSH_PARAM
+LOADSTRING 0
+PUSH_PARAM
+STANDALONE_CALL_BUILTIN 0
+CALL_BUILTIN 1
+PUSH 1
+SET_ARRAY_AT 0
+LOADSTRING 1
+PUSH_PARAM
+PUSH 1
+LOAD_ARRAY_AT 0
+PUSH 0
+LOAD_ARRAY_AT 0
+OP -
+PUSH_PARAM
+LOADSTRING 2
+PUSH_PARAM
+STANDALONE_CALL_BUILTIN 0
+LOADSTRING 3
+PUSH_PARAM
+LOAD 1
+PUSH_PARAM
+STANDALONE_CALL_BUILTIN 0
+PUSH 1
+PUSH_PARAM
+PUSH 500
+PUSH_PARAM
+CALL_BUILTIN 2
+STORE 3
+LOADSTRING 4
+PUSH_PARAM
+LOAD 3
+PUSH_PARAM
+STANDALONE_CALL_BUILTIN 0
 PUSH 1
 PUSH_ENUM_VALUE 1
-STORE 10
+STORE 4
+LOAD 1
+STORE 5
 PUSH 1
 PUSH_ENUM_VALUE 0
-STORE 11
+STORE 6
+LOAD 4
+PUSH_PARAM
+LOADSTRING 5
+PUSH_PARAM
+LOAD 6
+PUSH_PARAM
+STANDALONE_CALL_BUILTIN 0
+PUSH 0
+STORE 7
 PUSH 1
-PUSH_ENUM_VALUE 0
-STORE 12
-LOAD 10
-LOAD 11
+PUSH 1
 OP =
-LOAD 12
-LOAD 11
-OP =
+PUSH 1
+PUSH 1
+OP ~
 OR
-GOTO_IF_FALSE 10
-LIST 10
-LABEL 10
+GOTO_IF_FALSE 3
+PUSH 5
+PUSH 5
+PUSH 5
+OP +
+PUSH 10
+OP =
+AND
+GOTO_IF_FALSE 5
+PUSH 100
+STORE 7
+GOTO 4
+LABEL 5
+PUSH 50
+STORE 7
+LABEL 4
+GOTO 2
+LABEL 3
+PUSH 1
+NEG
+STORE 7
+LABEL 2
+LOAD 7
+PUSH_PARAM
+STANDALONE_CALL_BUILTIN 0
 
-[memory at 2] Type: NUMBER Value: 100
-[memory at 4] Type: STRING Value: hello, world POINTER: 0
-[memory at 5] Type: STRING Value: hello, world POINTER: 0
-[memory at 6] Type: STRING Value: bye world! POINTER: 1
-[memory at 7] Type: NUMBER Value: -2.5
-[memory at 3] Type: NUMBER Value: 1
-[memory at 1] Type: ARRAY (Addr 0) Elements:
-[0]: NUMBER: 0
-[1]: NUMBER: 1
-....
-[253]: STRING: hello, bye!
-[254]: STRING: hello, bye!
-[memory at 10] Type: ENUM_OBJECT (Type 1, Value 1)
-Execution time: 49.6773 ms
+[ 8.17178e+07 ]
+Runtime: 23ms
+delta array : [ 8.17178e+07 8.17179e+07 ]
+rand: 499.054
+1  0
+100
 ```
+
 
 # Speed Benchmark (For variable accessing)
 
@@ -251,6 +210,7 @@ Execution time: 49.6773 ms
 ```Pascal
 program speed_benchmark 
 
+var Ds = Time()
 var target = 1000000
 var i = 0 
 
@@ -258,10 +218,14 @@ while i < target do
     i=i+1
 end
 
+var De = Time()
+
+List("ran in: "  , De-Ds, "ms")
+
 end program 
 ```
 
- - 36.9804 ms
+- ran in: 26ms
 
 - Python
 
@@ -286,15 +250,28 @@ print(f"ran in: {elapsed_ms:.3f} ms")
  - Requierments
  - C++ 20
  - G++ (I'm pretty sure you can use other compiler, however rF was only tested with G++)
+ - Python 3+ (Optional, for fast building)
 
 ```bash 
 git clone [repo_link]
 cd path_to_clone/src
-g++  runtime/*.cpp lexer/*.cpp compiler/*.cpp parser/*.cpp -Iinclude -o b
-# or you can compile it with extra optimizations
-g++ runtime/*.cpp lexer/*.cpp compiler/*.cpp parser/*.cpp -Iinclude -O3 -Ofast -funroll-loops -ffast-math -march=native -flto -fomit-frame-pointer -o b
-./b # by default, main.rf will be executed
+# build project with my own version of cmake
+# make sure you have python 3+ installed
+cd rdshell
+python rdshell.py
+rdshell> run
+rdshell> exit
+cd ..
+
+# ON LINUX/MACOS
+./b
+# ON WINDOWS
+b.exe
+
+# If you don't have python, just run this after you cd'd into src;
+g++ runtime/*.cpp lexer/*.cpp runtime/stl/*.cpp compiler/*.cpp parser/*.cpp -Iinclude -O3 -Ofast -funroll-loops -ffast-math -march=native -flto -fomit-frame-pointer -o b
 ```
+
 
 
 
