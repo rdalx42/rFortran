@@ -1,0 +1,9 @@
+{
+    "Rdshell":{
+        "Version": "1.0.0",
+        "Creator": "github.com/rdalx42",
+        "Commands":[
+            "g++ runtime/*.cpp lexer/*.cpp runtime/stl/*.cpp compiler/*.cpp parser/*.cpp -Iinclude -O3 -Ofast -funroll-loops -ffast-math -march=native -flto -fomit-frame-pointer -o b"
+        ]
+    }
+}
