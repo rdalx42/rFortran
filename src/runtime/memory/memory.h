@@ -15,7 +15,9 @@
 #pragma GCC optimize("Ofast","unroll-loops","fast-math")
 
 #define MAX_MEM UINT8_MAX
+#define MAX_CALL_STACK 100
 #define MAX_ENUM 20
+#define MAX_PARAM 40
 
 enum class VALUE_TYPE : uint8_t{
     NUMBER,
@@ -41,10 +43,89 @@ struct VALUE{
     VALUE_TYPE value_type = VALUE_TYPE::NONE;
 };
 
+
+
+struct CALL_STACK{
+    public: // return value will be placed in the 0th register
+    uint16_t call_stack[MAX_CALL_STACK]; // return cursor positions
+    
+    inline void push(uint16_t val){
+        if(csp>=MAX_CALL_STACK){
+            throw_error("Call stack overflow, max call stack is: " + std::to_string(MAX_CALL_STACK)+"!");
+        }
+        call_stack[csp++] = val;
+
+    }
+    
+    inline uint16_t pop_ret(){
+        if(csp<=0){
+            throw_error("Call stack underflow, no return address to pop!");
+        }
+        return call_stack[--csp];
+    }
+
+    private:
+    int csp = 0; // call stack pointer
+   
+};
+
+struct PARAM_STACK {
+    VALUE param_values[MAX_PARAM];
+    int psp = 0;      // number of elements in the stack
+    int fpsp = 0;     // index of the front element
+    int maxpsp = MAX_PARAM; // max size of the stack
+
+    inline void push(const VALUE& val) {
+        if (psp >= maxpsp) {
+            throw_error("Parameter stack overflow!");
+        }
+        int idx = (fpsp + psp) % maxpsp; 
+        param_values[idx] = val;
+        psp++;
+    }
+
+    inline bool empty() const {
+        return psp == 0;
+    }
+
+    inline VALUE& pop_ret() {
+        if (psp == 0) {
+            throw_error("Parameter stack underflow, no parameter to pop!");
+        }
+        psp--;
+        int idx = (fpsp + psp) % maxpsp;
+        return param_values[idx];
+    }
+
+    inline void pop() {
+        if (psp == 0) {
+            throw_error("Parameter stack underflow, no parameter to pop!");
+        }
+        psp--;
+    }
+
+    inline VALUE& front() {
+        if (psp == 0) {
+            throw_error("Parameter stack is empty, no parameter at front!");
+        }
+        return param_values[fpsp];
+    }
+
+    inline void pop_front() {
+        if (psp == 0) {
+            throw_error("Parameter stack underflow, no parameter to pop at front!");
+        }
+        fpsp = (fpsp + 1) % maxpsp;
+        psp--;
+    }
+};
+
 struct STACK{
 
     public:
         VALUE stack[MAX_MEM];
+        
+        
       
     int sp = 0; // stack pointer
     inline void push(const VALUE& val){
@@ -67,7 +148,15 @@ struct STACK{
             case VALUE_TYPE::NUMBER:
                 std::cout<<"[Top of Stack] Type: NUMBER Value: "<<tval.data.number_value<<"\n";
                 break;
-           
+            case VALUE_TYPE::STRING:
+                std::cout<<"[Top of Stack] Type: STRING Value: "<<tval.data.string_pointer_to_string_hash_array<<"\n";
+                break;
+            case VALUE_TYPE::ENUM_OBJECT:
+                std::cout<<"[Top of Stack] Type: ENUM_OBJECT (Type "<<(int)tval.data.enum_data.type_id<<", Value "<<(int)tval.data.enum_data.value_id<<")\n";
+                break;
+            case VALUE_TYPE::ARRAY:
+                std::cout<<"[Top of Stack] Type: ARRAY (Addr "<<(int)tval.data.array_pointer<<")\n";
+                break;
             case VALUE_TYPE::NONE:
                 std::cout<<"[Top of Stack] Type: NONE\n";
                 break;
@@ -86,6 +175,10 @@ struct MEMORY{
     std::vector<std::vector<VALUE>> enum_memory; // dynamic enum memory
 
     STACK st;
+    CALL_STACK call_stack;
+    PARAM_STACK param_stack;
+    
+
     STRING_HASHER* string_hasher = nullptr;
     GOTO_HASHER* goto_hasher = nullptr;
 
