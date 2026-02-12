@@ -65,7 +65,7 @@ void COMPILER::run() {
     // }
     
     ip=0;
-    auto start = std::chrono::high_resolution_clock::now();
+  //  auto start = std::chrono::high_resolution_clock::now();
 
     while (ip < bytecode.size()) {
         const BTOKEN& token = bytecode[ip];
@@ -467,9 +467,10 @@ void COMPILER::run() {
         }
     }
 
-    auto end = std::chrono::high_resolution_clock::now();
+  //  auto end = std::chrono::high_resolution_clock::now();
     
-    std::chrono::duration<double, std::milli> duration_ms = end - start;
+   // std::chrono::duration<double, std::milli> duration_ms = end - start;
    // std::cout << "Execution time: " << duration_ms.count() << " ms\n";
     
 }
+
