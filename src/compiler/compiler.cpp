@@ -2,9 +2,7 @@
 #include "../lexer/lexer.h"
 #include "../error/error.h"
 
-/*
-push param just removes the first value from the register and pushses it into the static array based param stack
- */
+
 
 void COMPILER::init_content() {
     // Iterate all bytecode tokens
@@ -65,7 +63,7 @@ void COMPILER::run() {
     // }
     
     ip=0;
-  //  auto start = std::chrono::high_resolution_clock::now();
+    // auto start = std::chrono::high_resolution_clock::now();
 
     while (ip < bytecode.size()) {
         const BTOKEN& token = bytecode[ip];
@@ -467,10 +465,9 @@ void COMPILER::run() {
         }
     }
 
-  //  auto end = std::chrono::high_resolution_clock::now();
+    // auto end = std::chrono::high_resolution_clock::now();
     
-   // std::chrono::duration<double, std::milli> duration_ms = end - start;
+    // std::chrono::duration<double, std::milli> duration_ms = end - start;
    // std::cout << "Execution time: " << duration_ms.count() << " ms\n";
     
 }
-
