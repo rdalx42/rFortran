@@ -1,35 +1,15 @@
-program main
+program speed_benchmark 
 
-var a = 5
-var b = 10
-var c = 0
+var Ds = Time()
+var target = 1000000
+var i = 0 
 
-if 1 do
-    if 5 do
-        c = 100
-    else 
-        c = 50
-    end
-else 
-    c = -1
+while i < target do 
+    i=i+1
 end
 
-list c
+var De = Time()
 
-var x = 1
-var string = "hello, world"
-var string2 = string
-var string3 = "bye" concat " world!"
+List("ran in "  , De-Ds, "ms")
 
-list string 
-list string2
-list string3
-
-do 
-    var z = -3.5+x 
-    list z
-end
-
-list x
-
-end program
+end program 
