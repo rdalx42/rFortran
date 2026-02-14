@@ -2,8 +2,6 @@
 #include "../lexer/lexer.h"
 #include "../error/error.h"
 
-
-
 void COMPILER::init_content() {
     // Iterate all bytecode tokens
     for (size_t i = 0; i < bytecode.size(); i++) {
@@ -51,24 +49,13 @@ void COMPILER::init_content() {
 
 void COMPILER::run() {
 
-    // for(int i = 0 ; i < bytecode.size();i++){
-
-    //     if(bytecode[i].data.number_value){
-    //         std::cout<<i<<". "<<bytecode_token_type_to_string(bytecode[i].token_type)<<" "<<static_cast<double>(bytecode[i].data.number_value)<<" ";
-    //     }else{
-    //         std::cout<<i<<". "<<bytecode_token_type_to_string(bytecode[i].token_type)<<" "<<static_cast<unsigned char>(bytecode[i].data.char_value)<<" ";
-    //     }
-
-    //     std::cout<<"\n";
-    // }
-    
     ip=0;
     // auto start = std::chrono::high_resolution_clock::now();
 
     while (ip < bytecode.size()) {
         const BTOKEN& token = bytecode[ip];
        // std::cout<<ip<<"\n";
-       // std::cout<<bytecode_token_type_to_string(token.token_type)<<" - "<<ip<<"\n";
+       
 
         switch (token.token_type) {
 
@@ -111,6 +98,7 @@ void COMPILER::run() {
             // STORE from stack into memory
             // ----------------------------------
             case BTOKEN_TYPE::STORE: {
+                // std::cout<<"store\n";
                 uint16_t addr = token.data.number_value;
                 registers.registers[0] = memory.st.pop_ret();
                 memory.memory[addr] = registers.registers[0];
@@ -437,6 +425,7 @@ void COMPILER::run() {
                 // std::cout<<memory.param_stack.psp<<"c\n";
                 uint16_t builtin_id = token.data.number_value;
                 this->standard.builtins[builtin_id](false);
+                // this->memory.st.list_top();
                 ip++;
                 break;
             }
