@@ -7,6 +7,7 @@
 
 int main(void){
  
+    std::ios::sync_with_stdio(false);
     LEXER lexer;
     lexer.init("runtime/main.rf");
     COMPILER compiler;
