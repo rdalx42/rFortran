@@ -294,8 +294,6 @@ void LEXER::lexb(){
 }
 
 void LEXER::list(){
-    
-    std::ios::sync_with_stdio(false);
 
     for(const auto& token : this->tokens){
         std::cout << "Type: " << token_type_to_string(token.type) << " Value: " << token.value << "\n";
@@ -303,8 +301,7 @@ void LEXER::list(){
 }
 
 void LEXER::listb(){
-
-    std::ios::sync_with_stdio(false);
+    
     int I=0;
     std::cout<<"\n\n";
 
