@@ -13,6 +13,8 @@ struct STRING_HASHER{
     public:
         std::unordered_map<std::string, uint16_t>string_to_hash;
         std::vector<std::string>hashed_strings;
+        
+        
         void fill_hashed_strings(){
             hashed_strings.resize(string_to_hash.size());
             for(const auto& pair : string_to_hash){
