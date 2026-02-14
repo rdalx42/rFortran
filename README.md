@@ -77,9 +77,23 @@ else
 end
 List(c)
 
+var ilist = [0]
+var ilistindex = 0
+
+while ilistindex<10 do 
+    var InputChar = GetChar()
+    
+    ilist[ilistindex]=InputChar
+    ilistindex=ilistindex+1
+end
+
+List(ilist)
+var it = GetType(ilist)
+var it2 = GetType(ilist[0])
+
+List(it , "  ", it2)
+
 end program 
-
-
 ```
 
 # Bytecode
@@ -111,13 +125,11 @@ GOTO 0
 LABEL 1
 LOAD 1
 PUSH_PARAM
-LOADSTRING 0
-PUSH_PARAM
 STANDALONE_CALL_BUILTIN 0
 CALL_BUILTIN 1
 PUSH 1
 SET_ARRAY_AT 0
-LOADSTRING 1
+LOADSTRING 0
 PUSH_PARAM
 PUSH 1
 LOAD_ARRAY_AT 0
@@ -125,10 +137,10 @@ PUSH 0
 LOAD_ARRAY_AT 0
 OP -
 PUSH_PARAM
-LOADSTRING 2
+LOADSTRING 1
 PUSH_PARAM
 STANDALONE_CALL_BUILTIN 0
-LOADSTRING 3
+LOADSTRING 2
 PUSH_PARAM
 LOAD 1
 PUSH_PARAM
@@ -139,7 +151,7 @@ PUSH 500
 PUSH_PARAM
 CALL_BUILTIN 2
 STORE 3
-LOADSTRING 4
+LOADSTRING 3
 PUSH_PARAM
 LOAD 3
 PUSH_PARAM
@@ -154,7 +166,7 @@ PUSH_ENUM_VALUE 0
 STORE 6
 LOAD 4
 PUSH_PARAM
-LOADSTRING 5
+LOADSTRING 4
 PUSH_PARAM
 LOAD 6
 PUSH_PARAM
@@ -193,13 +205,65 @@ LABEL 2
 LOAD 7
 PUSH_PARAM
 STANDALONE_CALL_BUILTIN 0
+PUSH 0
+LOAD_ARRAY 1
+STORE 8
+PUSH 0
+STORE 9
+LABEL 6
+LOAD 9
+PUSH 10
+OP <
+GOTO_IF_FALSE 7
+CALL_BUILTIN 3
+STORE 10
+LOAD 10
+LOAD 9
+SET_ARRAY_AT 1
+LOAD 9
+PUSH 1
+OP +
+STORE 9
+GOTO 6
+LABEL 7
+LOAD 8
+PUSH_PARAM
+STANDALONE_CALL_BUILTIN 0
+LOAD 8
+PUSH_PARAM
+CALL_BUILTIN 4
+STORE 10
+PUSH 0
+LOAD_ARRAY_AT 1
+PUSH_PARAM
+CALL_BUILTIN 4
+STORE 11
+LOAD 10
+PUSH_PARAM
+LOADSTRING 4
+PUSH_PARAM
+LOAD 11
+PUSH_PARAM
+STANDALONE_CALL_BUILTIN 0
 
-[ 8.17178e+07 ]
-Runtime: 23ms
-delta array : [ 8.17178e+07 8.17179e+07 ]
-rand: 499.054
+[ 7.89672e+07 ]
+Runtime: 25ms
+delta array : [ 7.89672e+07 7.89673e+07 ]
+rand: 195.607
 1  0
 100
+a
+b
+c
+d
+e
+f
+g
+h
+i
+j
+[ a b c d e f g h i j ]
+array  string
 ```
 
 
@@ -271,6 +335,7 @@ b.exe
 # If you don't have python, just run this after you cd'd into src;
 g++ runtime/*.cpp lexer/*.cpp runtime/stl/*.cpp compiler/*.cpp parser/*.cpp -Iinclude -O3 -Ofast -funroll-loops -ffast-math -march=native -flto -fomit-frame-pointer -o b
 ```
+
 
 
 
