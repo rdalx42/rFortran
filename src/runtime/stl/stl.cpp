@@ -7,6 +7,8 @@ void STL::init(COMPILER* compiler) {
     builtins[0] = [this](bool standalone){ this->List(standalone); };
     builtins[1] = [this](bool standalone){ this->Time(standalone); };
     builtins[2] = [this](bool standalone){ this->RandRange(standalone); };
+    builtins[3] = [this](bool standalone){this->GetChar(standalone);};
+    builtins[4] = [this](bool standalone){this->GetType(standalone);};
 }
 
 void STL::List(bool standalone) {
@@ -62,11 +64,14 @@ void STL::List(bool standalone) {
 }
 
 void STL::RandRange(bool standalone) {
-    if (standalone) return;
 
     if (this->comp->memory.param_stack.psp != 2) {
         throw_error("RandRange function expects 2 parameters!");
     }
+
+    if (standalone) return;
+
+
     const VALUE& min_val = this->comp->memory.param_stack.front();
     this->comp->memory.param_stack.pop_front();
     const VALUE& max_val = this->comp->memory.param_stack.front();
@@ -98,6 +103,11 @@ void STL::RandRange(bool standalone) {
 }
 
 void STL::Time(bool standalone) {
+
+    if(this->comp->memory.param_stack.psp != 0){
+        throw_error("Time function doesn't expect params!");
+    }
+
     if (standalone) return;
 
     auto now = std::chrono::system_clock::now();
@@ -114,6 +124,87 @@ void STL::Time(bool standalone) {
 
     this->comp->registers.registers[0].value_type = VALUE_TYPE::NUMBER;
     this->comp->registers.registers[0].data.number_value = number_registers[0];
+
+    this->comp->memory.st.push(this->comp->registers.registers[0]);
+}
+
+void STL::GetChar(bool standalone)
+{
+    if (this->comp->memory.param_stack.psp != 0) {
+        throw_error("GetChar function doesn't expect params!");
+    }
+
+    char c;
+    std::cin>>c;
+
+    if (standalone) {
+        return;
+    }
+
+    if (c == '\n' || c == '\r' || c == '\t' || c == ' ') {
+        return;
+    }
+
+    std::string key(1, c);
+    
+    auto* hasher = this->comp->memory.string_hasher;
+    auto it = hasher->string_to_hash.find(key);
+
+    if (it == hasher->string_to_hash.end()) {
+        std::cout << "invalid char\n";
+        return;
+    }
+
+    size_t id = it->second;
+
+    if (id >= hasher->hashed_strings.size()) {
+        std::cout << "invalid char id (out of bounds)\n";
+        return;
+    }
+
+    this->comp->registers.registers[0].value_type = VALUE_TYPE::STRING;
+    this->comp->registers.registers[0].data.string_pointer_to_string_hash_array = id;
+    this->comp->memory.st.push(this->comp->registers.registers[0]);
+}
+
+void STL::GetType(bool standalone){
+
+    if (this->comp->memory.param_stack.psp != 1) {
+        throw_error("GetType function expects only one param");
+    }
+
+    if(standalone){
+        return;
+    }
+
+    this->comp->registers.registers[0] = this->comp->memory.param_stack.front();
+    this->comp->memory.param_stack.pop_front();
+
+    switch(this->comp->registers.registers[0].value_type){
+        case VALUE_TYPE::STRING:
+            this->comp->registers.registers[0].value_type = VALUE_TYPE::STRING;
+            this->comp->registers.registers[0].data.string_pointer_to_string_hash_array = this->comp->memory.string_hasher->string_to_hash["string"];
+            break;
+        case VALUE_TYPE::NUMBER:
+            this->comp->registers.registers[0].value_type = VALUE_TYPE::STRING;
+            this->comp->registers.registers[0].data.string_pointer_to_string_hash_array = this->comp->memory.string_hasher->string_to_hash["number"];
+            break;
+        case VALUE_TYPE::ENUM_OBJECT:
+            this->comp->registers.registers[0].value_type = VALUE_TYPE::STRING;
+            this->comp->registers.registers[0].data.string_pointer_to_string_hash_array = this->comp->memory.string_hasher->string_to_hash["enum_object"];
+            break;
+        case VALUE_TYPE::ARRAY:
+            this->comp->registers.registers[0].value_type = VALUE_TYPE::STRING;
+            this->comp->registers.registers[0].data.string_pointer_to_string_hash_array = this->comp->memory.string_hasher->string_to_hash["array"];
+            break;
+        case VALUE_TYPE::NONE:
+            this->comp->registers.registers[0].value_type = VALUE_TYPE::STRING;
+            this->comp->registers.registers[0].data.string_pointer_to_string_hash_array = this->comp->memory.string_hasher->string_to_hash["none"];
+            break;
+        default:
+            throw_error("Invalid value type in GetType builtin!");
+            break;
+    }
 
     this->comp->memory.st.push(this->comp->registers.registers[0]);
 }
