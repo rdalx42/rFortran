@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <climits>
 #include <iostream>
+#include <cctype>
 #include <algorithm>
 #include <unordered_map>
 #include "hasher.h"
@@ -26,6 +27,8 @@ enum class VALUE_TYPE : uint8_t{
     ARRAY,
     ENUM_OBJECT,
 };
+
+const std::vector<std::string>preload_string_function_return_values = {"number","string","array","none","enum_object"};
 
 struct VALUE{
 
@@ -215,6 +218,44 @@ struct MEMORY{
             //    std::cout<<type_id<<"\n";
               
                 enum_memory[type_id][val_idx] = v;
+            }
+        }
+
+        // LOAD ALL BUILTIN STRING RETURN VALUES!
+
+        // load all one characters strings for getchar builtin 
+
+        std::cout<<"PRE HASHING RETURN TYPES!\n";
+
+        for (int i = 0; i <= 255; i++) {
+            if (std::isprint(i)) {
+
+                char ch = static_cast<char>(i);
+                std::string str(1, ch);
+
+                if (string_hasher->string_to_hash.find(str) == string_hasher->string_to_hash.end()) {
+
+                    uint16_t id = string_hasher->hashed_strings.size();
+
+                    string_hasher->string_to_hash[str] = id;
+                    string_hasher->hashed_strings.push_back(str);
+
+                    std::cout << "hashed: " << ch << " with id: " << id << "\n";
+                }
+            }
+        }
+
+        // load all typeof return types as well!
+
+        for(const std::string& ret_type : preload_string_function_return_values){
+            if (string_hasher->string_to_hash.find(ret_type) == string_hasher->string_to_hash.end()) {
+
+                uint16_t id = string_hasher->hashed_strings.size();
+
+                string_hasher->string_to_hash[ret_type] = id;
+                string_hasher->hashed_strings.push_back(ret_type);
+
+                std::cout << "hashed: " << ret_type << " with id: " << id << "\n";
             }
         }
 
