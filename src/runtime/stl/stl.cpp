@@ -9,6 +9,21 @@ void STL::init(COMPILER* compiler) {
     builtins[2] = [this](bool standalone){ this->RandRange(standalone); };
     builtins[3] = [this](bool standalone){this->GetChar(standalone);};
     builtins[4] = [this](bool standalone){this->GetType(standalone);};
+    builtins[5] = [this](bool standalone){this->System(standalone);};
+}
+
+void STL::System(bool standalone) {
+    if(this->comp->memory.param_stack.psp!=1) {
+        throw_error("System function expects exactly 1 paramater!");
+    }
+    if(!standalone) {
+        throw_error("System function must be standalone");
+    }
+    const VALUE& val = this->comp->memory.param_stack.front();
+    if(val.value_type != VALUE_TYPE::STRING) {
+        throw_error("System function expects a string parameter!");
+    }
+    system(this->comp->memory.string_hasher->hashed_strings[val.data.string_pointer_to_string_hash_array].c_str());
 }
 
 void STL::List(bool standalone) {
