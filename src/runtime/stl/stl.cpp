@@ -2,6 +2,9 @@
 #include "../../compiler/compiler.h"
 #include <iostream>
 
+std::random_device rd;  
+std::mt19937 gen(rd()); 
+
 void STL::init(COMPILER* compiler) {
     this->comp = compiler;
     builtins[0] = [this](bool standalone){ this->List(standalone); };
@@ -10,6 +13,23 @@ void STL::init(COMPILER* compiler) {
     builtins[3] = [this](bool standalone){this->GetChar(standalone);};
     builtins[4] = [this](bool standalone){this->GetType(standalone);};
     builtins[5] = [this](bool standalone){this->System(standalone);};
+    builtins[6] = [this](bool standalone){ this->SeedRand(standalone);};
+}
+
+void STL::SeedRand(bool standalone) {
+    if(this->comp->memory.param_stack.psp!=1) {
+        throw_error("SeedRand function expects exactly 1 parameter!");
+    }
+    if(!standalone) {
+        throw_error("SeedRand function must be standalone");
+    }
+
+    const VALUE& val = this->comp->memory.param_stack.front();
+    this->comp->memory.param_stack.pop_front();
+    if(val.value_type != VALUE_TYPE::NUMBER) {
+        throw_error("SeedRand function expects a number parameter!");
+    }
+    gen.seed(val.data.number_value);
 }
 
 void STL::System(bool standalone) {
@@ -20,6 +40,7 @@ void STL::System(bool standalone) {
         throw_error("System function must be standalone");
     }
     const VALUE& val = this->comp->memory.param_stack.front();
+    this->comp->memory.param_stack.pop_front();
     if(val.value_type != VALUE_TYPE::STRING) {
         throw_error("System function expects a string parameter!");
     }
@@ -101,8 +122,7 @@ void STL::RandRange(bool standalone) {
 
     if (min > max) std::swap(min, max); 
 
-    static std::random_device rd;  
-    static std::mt19937 gen(rd()); 
+    
     std::uniform_real_distribution<double> dist(min, max);
 
     double result = dist(gen);
