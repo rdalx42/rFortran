@@ -3,7 +3,7 @@
 
 <br>
 
-> You don't need a Garbage Collector, everything is pre allocated :3
+> You don't need a Garbage Collector, everything is pre allocated 
 
 <br>
 
